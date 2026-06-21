@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PRISMA Professional SLR Workspace</title>
   
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -14,13 +13,8 @@
         extend: {
           colors: {
             brand: {
-              50: '#f0f7ff',
-              100: '#e0effe',
-              500: '#3b82f6',
-              600: '#2563eb',
-              700: '#1d4ed8',
-              800: '#1e40af',
-              900: '#1e3a8a',
+              50: '#f0f7ff', 100: '#e0effe', 500: '#3b82f6', 600: '#2563eb',
+              700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a',
             }
           }
         }
@@ -28,46 +22,22 @@
     }
   </script>
 
-  <!-- FontAwesome Icons & Inter Font -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-    .no-scrollbar::-webkit-scrollbar {
-      display: none;
-    }
-    .no-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-    .highlight-match {
-      background-color: #fef08a;
-      color: #854d0e;
-      font-weight: 600;
-      border-radius: 2px;
-      padding: 0 2px;
-    }
-    .dark .highlight-match {
-      background-color: #854d0e;
-      color: #fef08a;
-    }
+    body { font-family: 'Inter', sans-serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .highlight-match { background-color: #fef08a; color: #854d0e; font-weight: 600; border-radius: 2px; padding: 0 2px; }
+    .dark .highlight-match { background-color: #854d0e; color: #fef08a; }
     @media print {
-      .no-print {
-        display: none !important;
-      }
-      body {
-        background-color: white !important;
-        color: black !important;
-      }
+      .no-print { display: none !important; }
+      body { background-color: white !important; color: black !important; }
     }
-    .animate-fade-in {
-      animation: fadeIn 0.3s ease-out;
-    }
+    .animate-fade-in { animation: fadeIn 0.3s ease-out; }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(-10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -77,22 +47,37 @@
 <body class="h-full bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-150">
   <div id="root" class="h-full"></div>
 
-  <!-- React 18 & ReactDOM 18 -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-  <!-- Babel compiler to translate JSX in the browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
   <script>
     Babel.registerPreset('react-classic', {
-      presets: [
-        [Babel.availablePresets['react'], { runtime: 'classic' }]
-      ]
+      presets: [ [Babel.availablePresets['react'], { runtime: 'classic' }] ]
     });
   </script>
 
   <script type="text/babel" data-presets="react-classic">
     const { useState, useEffect, useMemo, useRef } = React;
+
+    // ==============================================================================
+    // ☁️ FIREBASE CLOUD SYNC CONFIGURATION
+    // ==============================================================================
+    // INSTRUCTIONS TO GO ONLINE:
+    // 1. Go to console.firebase.google.com and create a free project.
+    // 2. Add a "Web App" to the project to get your keys.
+    // 3. Replace the 'null' below with your actual configuration object.
+    
+    const firebaseConfig = {
+    apiKey: "AIzaSyDOtonMvhKkoYcq4tHR3DEmJenSpP4aYPw",
+    authDomain: "prism-c0399.firebaseapp.com",
+    projectId: "prism-c0399",
+    storageBucket: "prism-c0399.firebasestorage.app",
+    messagingSenderId: "418429283718",
+    appId: "1:418429283718:web:d3ad698927030cd15e9007",
+    measurementId: "G-VQCHMC3DP3"
+    };
+    // ==============================================================================
 
     const INITIAL_COHORT = [];
 
@@ -122,21 +107,16 @@
       const [selectedArtId, setSelectedArtId] = useState("");
       const [screeningFilter, setScreeningFilter] = useState("All");
 
-      // Search configuration state
       const [searchEngine, setSearchEngine] = useState("openalex"); 
       const [searchQuery, setSearchQuery] = useState("");
       const [searchLoading, setSearchLoading] = useState(false);
       const [searchResults, setSearchResults] = useState([]);
       const [searchError, setSearchError] = useState("");
 
-      // RIS/BibTeX raw text parsing state
       const [rawIngestText, setRawIngestText] = useState("");
       const [currentReviewer, setCurrentReviewer] = useState("reviewerA"); 
-
-      // PICO Keyword highlighting state
       const [picoKeywords, setPicoKeywords] = useState("");
 
-      // Checklist Status Draft State
       const [checklistProgress, setChecklistProgress] = useState({
         "item-1": { status: "Not Started", draft: "" },
         "item-2": { status: "Not Started", draft: "" },
@@ -146,13 +126,11 @@
         "item-6": { status: "Not Started", draft: "" }
       });
 
-      // Blind Review Mode state
       const [blindMode, setBlindMode] = useState(true);
-
       const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
 
-      // Cloud Collaboration State
-      const [cloudStatus, setCloudStatus] = useState("disconnected");
+      // Cloud State
+      const [cloudStatus, setCloudStatus] = useState("disconnected"); // connecting, connected, error, disconnected
       const lastSyncedState = useRef("");
       const cloudSetupDone = useRef(false);
 
@@ -161,7 +139,6 @@
         setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 4000);
       };
 
-      // Cloud Setup and Inbound Sync
       useEffect(() => {
         if (cloudSetupDone.current) return;
         cloudSetupDone.current = true;
@@ -171,50 +148,44 @@
           try {
             setCloudStatus("connecting");
             
-            // Check if we are running locally vs on a live server with config
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'local-offline-app';
-            const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-            
-            if (firebaseConfigStr === '{}') {
+            if (!FIREBASE_CONFIG) {
               setCloudStatus("disconnected");
-              return; // Running locally, skip cloud sync
+              return; // Running locally without keys, fallback to offline
             }
             
+            // Dynamically import Firebase libraries
             const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
-            const { getAuth, signInAnonymously, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+            const { getAuth, signInAnonymously } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
             const { getFirestore, doc, setDoc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
 
-            const firebaseConfig = JSON.parse(firebaseConfigStr);
-            const app = initializeApp(firebaseConfig);
+            const app = initializeApp(FIREBASE_CONFIG);
             const auth = getAuth(app);
             const db = getFirestore(app);
 
-            const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-            if (token) {
-              await signInWithCustomToken(auth, token);
-            } else {
-              await signInAnonymously(auth);
-            }
+            // Sign in anonymously to secure the database
+            await signInAnonymously(auth);
 
             if (!auth.currentUser) {
               setCloudStatus("error");
+              triggerToast("Database Auth Failed", "error");
               return;
             }
 
             window._db = db;
             window._setDoc = setDoc;
             
-            // Manage Workspace Session ID in URL Hash
+            // CRITICAL: Manage Workspace Session ID in URL Hash for sharing
             let wid = window.location.hash.substring(1);
             if (!wid) {
               wid = Math.random().toString(36).substring(2, 12);
-              window.location.hash = wid;
+              window.location.hash = wid; // Updates URL so it can be copied
             }
 
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'workspaces', wid);
+            // Reference to this exact collaborative workspace
+            const docRef = doc(db, 'workspaces', wid);
             window._docRef = docRef;
 
-            // Start real-time inbound listener
+            // Start real-time inbound listener (When Reviewer Beta votes, update Reviewer Alpha's screen)
             unsubscribe = onSnapshot(docRef, (snapshot) => {
               if (snapshot.exists()) {
                 const data = snapshot.data();
@@ -231,11 +202,12 @@
                 const safeData = {
                   articles: data.articles || [],
                   reviewTitle: data.reviewTitle || "",
-                  checklistProgress: data.checklistProgress && Object.keys(data.checklistProgress).length > 0 ? data.checklistProgress : defaultChecklist
+                  checklistProgress: data.checklistProgress || defaultChecklist
                 };
                 
                 const dataStr = JSON.stringify(safeData);
                 
+                // Only update if the cloud data is actually different to prevent loops
                 if (dataStr !== lastSyncedState.current) {
                   lastSyncedState.current = dataStr;
                   setArticles(safeData.articles);
@@ -259,13 +231,13 @@
         return () => { if (unsubscribe) unsubscribe(); }
       }, []);
 
-      // Outbound Sync Effect
       useEffect(() => {
         if (cloudStatus !== "connected" || !window._setDoc || !window._docRef) return;
         
         const currentData = { articles, reviewTitle, checklistProgress };
         const currentStr = JSON.stringify(currentData);
         
+        // If local state changed, push it to the cloud database
         if (currentStr !== lastSyncedState.current) {
           lastSyncedState.current = currentStr;
           
@@ -275,29 +247,30 @@
             } catch (err) {
               console.error("Failed to push updates:", err);
             }
-          }, 800);
+          }, 800); // 800ms debounce to prevent spamming the database
           return () => clearTimeout(timeout);
         }
       }, [articles, reviewTitle, checklistProgress, cloudStatus]);
 
-      // Toggle Dark/Light mode
       const toggleDarkMode = () => {
         setDarkMode(!darkMode);
-        if (!darkMode) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
+        if (!darkMode) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
       };
 
       const copyShareLink = () => {
-        const dummy = document.createElement('input');
-        document.body.appendChild(dummy);
-        dummy.value = window.location.href;
-        dummy.select();
-        document.execCommand('copy');
-        document.body.removeChild(dummy);
-        triggerToast("Collab link copied! Send it to your co-reviewer.", "success");
+        const fullUrl = window.location.href;
+        navigator.clipboard.writeText(fullUrl).then(() => {
+          triggerToast("Collab link copied! Send it to your co-reviewer.", "success");
+        }).catch(() => {
+          const dummy = document.createElement('input');
+          document.body.appendChild(dummy);
+          dummy.value = fullUrl;
+          dummy.select();
+          document.execCommand('copy');
+          document.body.removeChild(dummy);
+          triggerToast("Collab link copied! Send it to your co-reviewer.", "success");
+        });
       };
 
       const handleMultiEngineSearch = async () => {
@@ -326,19 +299,13 @@
                 title: work.title || "Untitled Literature",
                 authors: parsedAuthors || "Unknown Investigators",
                 journal: work.primary_location?.source?.display_name || "Academic Proceeding",
-                abstract: work.abstract_inverted_index 
-                  ? reconstructAbstract(work.abstract_inverted_index) 
-                  : "No abstract description indexed by OpenAlex database.",
-                status: "Identified",
-                source: "OpenAlex",
-                notes: "",
+                abstract: work.abstract_inverted_index ? reconstructAbstract(work.abstract_inverted_index) : "No abstract description indexed.",
+                status: "Identified", source: "OpenAlex", notes: "",
                 reviewerVotes: { reviewerA: null, reviewerB: null },
-                rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" },
-                extraction: {}
+                rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" }
               };
             });
-          } 
-          else if (searchEngine === "crossref") {
+          } else if (searchEngine === "crossref") {
             endpoint = `https://api.crossref.org/works?query=${encodeURIComponent(searchQuery)}&rows=50`;
             const res = await fetch(endpoint);
             if (!res.ok) throw new Error(`CrossRef HTTP Error: ${res.status}`);
@@ -351,25 +318,19 @@
                 title: item.title?.[0] || "Untitled CrossRef Registry",
                 authors: parsedAuthors,
                 journal: item["container-title"]?.[0] || "CrossRef DOI Publisher",
-                abstract: "Abstract meta-tag not accessible via fast CrossRef API indexing. Abstract is stored upon DOI resolution.",
-                status: "Identified",
-                source: "CrossRef",
-                notes: "",
+                abstract: "Abstract meta-tag not accessible via fast CrossRef API indexing.",
+                status: "Identified", source: "CrossRef", notes: "",
                 reviewerVotes: { reviewerA: null, reviewerB: null },
-                rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" },
-                extraction: {}
+                rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" }
               };
             });
           }
 
           setSearchResults(mapped);
-          if (mapped.length === 0) {
-            setSearchError("No publications matched your search descriptors.");
-          } else {
-            triggerToast(`Found ${mapped.length} papers!`, "success");
-          }
+          if (mapped.length === 0) setSearchError("No publications matched your search descriptors.");
+          else triggerToast(`Found ${mapped.length} papers!`, "success");
         } catch (err) {
-          setSearchError(`Could not retrieve literature: ${err.message}. Try switching search terms or engines.`);
+          setSearchError(`Could not retrieve literature: ${err.message}.`);
         } finally {
           setSearchLoading(false);
         }
@@ -379,14 +340,10 @@
         try {
           const words = [];
           Object.entries(invertedIndex).forEach(([word, positions]) => {
-            positions.forEach(pos => {
-              words[pos] = word;
-            });
+            positions.forEach(pos => { words[pos] = word; });
           });
           return words.join(" ");
-        } catch (e) {
-          return "Abstract extraction error.";
-        }
+        } catch (e) { return "Abstract extraction error."; }
       };
 
       const importToScreening = (paper) => {
@@ -400,22 +357,16 @@
       };
 
       const handleRawIngest = () => {
-        if (!rawIngestText.trim()) {
-          triggerToast("Ingest field is empty.", "warning");
-          return;
-        }
-
+        if (!rawIngestText.trim()) return triggerToast("Ingest field is empty.", "warning");
         const lines = rawIngestText.split('\n');
         let importedCount = 0;
         
         if (rawIngestText.includes("TY  -") || rawIngestText.includes("ER  -")) {
           let currentPaper = { id: "", title: "", authors: "", journal: "", abstract: "", status: "Identified", source: "Local Import", reviewerVotes: { reviewerA: null, reviewerB: null }, rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" } };
-          
           lines.forEach(line => {
             const match = line.match(/^([A-Z0-9]{2})\s*-\s*(.*)$/);
             if (match) {
-              const tag = match[1];
-              const val = match[2].trim();
+              const tag = match[1], val = match[2].trim();
               if (tag === "TI" || tag === "T1") currentPaper.title = val;
               else if (tag === "AU") currentPaper.authors += (currentPaper.authors ? ", " : "") + val;
               else if (tag === "JO" || tag === "JF") currentPaper.journal = val;
@@ -436,32 +387,23 @@
           const authorMatch = rawIngestText.match(/author\s*=\s*[{"]([^}"]+)[}"]/i);
           const journalMatch = rawIngestText.match(/journal\s*=\s*[{"]([^}"]+)[}"]/i);
           const abstractMatch = rawIngestText.match(/abstract\s*=\s*[{"]([^}"]+)[}"]/i);
-          const yearMatch = rawIngestText.match(/year\s*=\s*[{"]?([0-9]+)[}"]?/i);
-
           if (titleMatch) {
-            const paper = {
-              id: `bib-${Date.now()}`,
-              title: titleMatch[1],
-              authors: (authorMatch ? authorMatch[1] : "Unknown Authors") + (yearMatch ? ` (${yearMatch[1]})` : ""),
+            setArticles(prev => [{
+              id: `bib-${Date.now()}`, title: titleMatch[1],
+              authors: authorMatch ? authorMatch[1] : "Unknown Authors",
               journal: journalMatch ? journalMatch[1] : "Indexed Monograph",
               abstract: abstractMatch ? abstractMatch[1] : "No abstract parsed in bibTeX block.",
-              status: "Identified",
-              source: "Local Import",
+              status: "Identified", source: "Local Import",
               reviewerVotes: { reviewerA: null, reviewerB: null },
               rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" }
-            };
-            setArticles(prev => [paper, ...prev]);
+            }, ...prev]);
             importedCount++;
           }
         }
-
         if (importedCount > 0) {
           triggerToast(`Successfully imported ${importedCount} studies!`, "success");
-          setRawIngestText("");
-          setActiveTab("screening");
-        } else {
-          triggerToast("Failed to parse standard RIS or BibTeX markers.", "error");
-        }
+          setRawIngestText(""); setActiveTab("screening");
+        } else triggerToast("Failed to parse standard RIS or BibTeX markers.", "error");
       };
 
       const handleReviewerVote = (artId, reviewer, vote) => {
@@ -469,36 +411,23 @@
           if (art.id === artId) {
             const updatedVotes = { ...art.reviewerVotes, [reviewer]: vote };
             let nextStatus = art.status;
-
-            if (updatedVotes.reviewerA === "Approve" && updatedVotes.reviewerB === "Approve") {
-              nextStatus = "Sought_Retrieval";
-            } else if (updatedVotes.reviewerA === "Exclude" && updatedVotes.reviewerB === "Exclude") {
-              nextStatus = "Excluded_Screening";
-            } else if (updatedVotes.reviewerA && updatedVotes.reviewerB && updatedVotes.reviewerA !== updatedVotes.reviewerB) {
-              nextStatus = "Conflict";
-            } else {
-              nextStatus = "Identified";
-            }
-
+            if (updatedVotes.reviewerA === "Approve" && updatedVotes.reviewerB === "Approve") nextStatus = "Sought_Retrieval";
+            else if (updatedVotes.reviewerA === "Exclude" && updatedVotes.reviewerB === "Exclude") nextStatus = "Excluded_Screening";
+            else if (updatedVotes.reviewerA && updatedVotes.reviewerB && updatedVotes.reviewerA !== updatedVotes.reviewerB) nextStatus = "Conflict";
+            else nextStatus = "Identified";
             return { ...art, reviewerVotes: updatedVotes, status: nextStatus };
           }
           return art;
         }));
-        triggerToast(`${reviewer === 'reviewerA' ? 'Reviewer 1' : 'Reviewer 2'} voted: ${vote}`, "success");
+        triggerToast(`${reviewer === 'reviewerA' ? 'R1' : 'R2'} voted: ${vote}`, "success");
       };
 
       const resolveConflict = (artId, resolution) => {
         setArticles(prev => prev.map(art => {
-          if (art.id === artId) {
-            return {
-              ...art,
-              status: resolution === "Approve" ? "Sought_Retrieval" : "Excluded_Screening",
-              reviewerVotes: { reviewerA: resolution, reviewerB: resolution }
-            };
-          }
+          if (art.id === artId) return { ...art, status: resolution === "Approve" ? "Sought_Retrieval" : "Excluded_Screening", reviewerVotes: { reviewerA: resolution, reviewerB: resolution } };
           return art;
         }));
-        triggerToast("Conflict resolved. Article routed appropriately.", "success");
+        triggerToast("Conflict resolved.", "success");
       };
 
       const updateRoBDomain = (artId, domainId, rating) => {
@@ -506,12 +435,7 @@
           if (art.id === artId) {
             const currentRob = { ...art.rob, [domainId]: rating };
             const vals = Object.entries(currentRob).filter(([k]) => k !== 'summary').map(([, v]) => v);
-            let summaryRating = "Low";
-            if (vals.includes("High")) {
-              summaryRating = "High";
-            } else if (vals.includes("Some Concerns")) {
-              summaryRating = "Some Concerns";
-            }
+            let summaryRating = vals.includes("High") ? "High" : vals.includes("Some Concerns") ? "Some Concerns" : "Low";
             return { ...art, rob: { ...currentRob, summary: summaryRating } };
           }
           return art;
@@ -522,24 +446,14 @@
         if (!picoKeywords.trim()) return text;
         const keywords = picoKeywords.split(',').map(k => k.trim()).filter(Boolean);
         if (keywords.length === 0) return text;
-
         try {
           const escapedKeywords = keywords.map(k => k.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
           const regex = new RegExp(`\\b(${escapedKeywords.join('|')})\\b`, 'gi');
-          const parts = text.split(regex);
-          
-          return parts.map((part, index) => {
-            if (regex.test(part)) {
-              return <span key={index} className="highlight-match">{part}</span>;
-            }
-            return part;
-          });
-        } catch (e) {
-          return text;
-        }
+          return text.split(regex).map((part, index) => regex.test(part) ? <span key={index} className="highlight-match">{part}</span> : part);
+        } catch (e) { return text; }
       };
 
-      // Workspace Export / Import for offline collaboration
+      // Workspace Export / Import (Fallback for offline mode)
       const exportWorkspace = () => {
         const data = { reviewTitle, articles, checklistProgress };
         const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
@@ -563,9 +477,7 @@
             if (data.reviewTitle) setReviewTitle(data.reviewTitle);
             if (data.checklistProgress) setChecklistProgress(data.checklistProgress);
             triggerToast("Workspace loaded successfully!", "success");
-          } catch (err) {
-            triggerToast("Invalid workspace file. Could not parse JSON.", "error");
-          }
+          } catch (err) { triggerToast("Invalid workspace file. Could not parse JSON.", "error"); }
         };
         reader.readAsText(file);
       };
@@ -576,7 +488,6 @@
         const excludedAbstract = articles.filter(a => a.status === "Excluded_Screening").length;
         const retrieved = articles.filter(a => ["Sought_Retrieval", "Eligibility", "Included", "Excluded_Eligibility"].includes(a.status)).length;
         const included = articles.filter(a => a.status === "Included").length;
-        
         return { total, conflicts, excludedAbstract, retrieved, included };
       }, [articles]);
 
@@ -585,13 +496,7 @@
           
           {toast.show && (
             <div className="fixed top-4 right-4 z-50 flex items-center p-4 bg-slate-900 text-white rounded-lg shadow-2xl border border-brand-500 animate-fade-in">
-              <span className="mr-3">
-                {toast.type === 'success' ? (
-                  <i className="fa-solid fa-circle-check text-emerald-400"></i>
-                ) : (
-                  <i className="fa-solid fa-triangle-exclamation text-amber-400"></i>
-                )}
-              </span>
+              <span className="mr-3">{toast.type === 'success' ? <i className="fa-solid fa-circle-check text-emerald-400"></i> : <i className="fa-solid fa-triangle-exclamation text-amber-400"></i>}</span>
               <p className="text-xs font-semibold">{toast.msg}</p>
             </div>
           )}
@@ -620,7 +525,7 @@
 
             <div className="flex items-center space-x-3">
               
-              {/* Cloud Sync Status & Share Button */}
+              {/* Live Collaboration Sync Status Area */}
               <div className="hidden lg:flex items-center space-x-3 border-r border-slate-700 pr-3">
                 <div className="flex items-center space-x-1.5 text-[10px] font-bold text-slate-400">
                   {cloudStatus === "connecting" && <><i className="fa-solid fa-spinner animate-spin text-blue-400"></i><span>Connecting...</span></>}
@@ -630,8 +535,12 @@
                 </div>
                 <button 
                   onClick={copyShareLink}
-                  disabled={cloudStatus !== "connected"}
-                  className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-[11px] font-extrabold flex items-center space-x-1.5 transition"
+                  title={cloudStatus === "disconnected" ? "Add Firebase Keys in code to enable sharing" : "Copy Live Session Link"}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center space-x-1.5 transition ${
+                    cloudStatus === "disconnected" 
+                    ? "bg-slate-800 text-slate-500 cursor-help" 
+                    : "bg-blue-600/20 hover:bg-blue-600/40 text-blue-400"
+                  }`}
                 >
                   <i className="fa-solid fa-link"></i>
                   <span>Invite Co-Reviewer</span>
@@ -654,103 +563,59 @@
                 </button>
               </div>
 
-              <button 
-                onClick={toggleDarkMode}
-                className="p-1.5 rounded bg-slate-850 border border-slate-700 text-slate-300 hover:text-white"
-              >
+              <button onClick={toggleDarkMode} className="p-1.5 rounded bg-slate-850 border border-slate-700 text-slate-300 hover:text-white">
                 {darkMode ? <i className="fa-solid fa-sun"></i> : <i className="fa-solid fa-moon"></i>}
               </button>
             </div>
           </header>
 
           <div className="flex-1 flex overflow-hidden">
-            
+            {}
             <aside className="no-print w-60 bg-slate-900 border-r border-slate-800 hidden md:flex flex-col justify-between py-6 flex-shrink-0">
               <nav className="space-y-1 px-3">
-                
                 <button 
                   onClick={() => setActiveTab("tutorial")}
                   className={`w-full flex items-center space-x-3 px-3 py-2.5 mb-4 rounded-lg text-xs font-semibold transition ${activeTab === "tutorial" ? "bg-amber-500/10 text-amber-400 border-l-4 border-amber-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}
                 >
-                  <i className="fa-solid fa-book-open w-4 text-center"></i>
-                  <span>PRISMA Guide</span>
+                  <i className="fa-solid fa-book-open w-4 text-center"></i><span>PRISMA Guide</span>
                 </button>
 
                 <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider px-3 mb-2">Ingestion & Discovery</div>
-                
-                <button 
-                  onClick={() => setActiveTab("api-search")}
-                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "api-search" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}
-                >
-                  <i className="fa-solid fa-globe w-4 text-center"></i>
-                  <span>Multi-Source API Search</span>
+                <button onClick={() => setActiveTab("api-search")} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "api-search" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}>
+                  <i className="fa-solid fa-globe w-4 text-center"></i><span>Multi-Source API Search</span>
                 </button>
-
-                <button 
-                  onClick={() => setActiveTab("custom-import")}
-                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "custom-import" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}
-                >
-                  <i className="fa-solid fa-file-import w-4 text-center"></i>
-                  <span>RIS / BibTeX Import</span>
+                <button onClick={() => setActiveTab("custom-import")} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "custom-import" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}>
+                  <i className="fa-solid fa-file-import w-4 text-center"></i><span>RIS / BibTeX Import</span>
                 </button>
 
                 <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider px-3 pt-6 mb-2">Synthesis Workspace</div>
-
-                <button 
-                  onClick={() => setActiveTab("screening")}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "screening" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <i className="fa-solid fa-square-poll-vertical w-4 text-center"></i>
-                    <span>Dual Screening</span>
-                  </div>
-                  {metrics.conflicts > 0 && (
-                    <span className="bg-rose-600 text-white rounded px-1.5 py-0.2 animate-pulse text-[9px]">
-                      {metrics.conflicts} Conflict
-                    </span>
-                  )}
+                <button onClick={() => setActiveTab("screening")} className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "screening" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}>
+                  <div className="flex items-center space-x-3"><i className="fa-solid fa-square-poll-vertical w-4 text-center"></i><span>Dual Screening</span></div>
+                  {metrics.conflicts > 0 && <span className="bg-rose-600 text-white rounded px-1.5 py-0.2 animate-pulse text-[9px]">{metrics.conflicts} Conflict</span>}
                 </button>
-
-                <button 
-                  onClick={() => setActiveTab("rob")}
-                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "rob" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}
-                >
-                  <i className="fa-solid fa-shield-virus w-4 text-center"></i>
-                  <span>Cochrane RoB 2</span>
+                <button onClick={() => setActiveTab("rob")} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "rob" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}>
+                  <i className="fa-solid fa-shield-virus w-4 text-center"></i><span>Cochrane RoB 2</span>
                 </button>
-
-                <button 
-                  onClick={() => setActiveTab("flowchart")}
-                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "flowchart" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}
-                >
-                  <i className="fa-solid fa-diagram-project w-4 text-center"></i>
-                  <span>Interactive Flowchart</span>
+                <button onClick={() => setActiveTab("flowchart")} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "flowchart" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}>
+                  <i className="fa-solid fa-diagram-project w-4 text-center"></i><span>Interactive Flowchart</span>
                 </button>
-
-                <button 
-                  onClick={() => setActiveTab("checklist")}
-                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "checklist" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}
-                >
-                  <i className="fa-solid fa-clipboard-check w-4 text-center"></i>
-                  <span>PRISMA 2020 Checklist</span>
+                <button onClick={() => setActiveTab("checklist")} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "checklist" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}>
+                  <i className="fa-solid fa-clipboard-check w-4 text-center"></i><span>PRISMA 2020 Checklist</span>
                 </button>
               </nav>
 
               <div className="flex flex-col h-full justify-end">
                 <div className="px-6 text-[10px] text-slate-500 mt-2 space-y-2 pb-4">
-                  <p className="font-bold text-slate-400 uppercase tracking-wider mb-2">Workspace Data</p>
+                  <p className="font-bold text-slate-400 uppercase tracking-wider mb-2">Offline Data Actions</p>
                   <button onClick={exportWorkspace} className="w-full flex items-center space-x-2 px-2 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
-                    <i className="fa-solid fa-download w-4 text-center"></i>
-                    <span>Export Project (.json)</span>
+                    <i className="fa-solid fa-download w-4 text-center"></i><span>Export Project (.json)</span>
                   </button>
                   <label className="w-full flex items-center space-x-2 px-2 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer">
-                    <i className="fa-solid fa-upload w-4 text-center"></i>
-                    <span>Load Project (.json)</span>
+                    <i className="fa-solid fa-upload w-4 text-center"></i><span>Load Project (.json)</span>
                     <input type="file" accept=".json" className="hidden" onChange={handleImportWorkspace} />
                   </label>
                 </div>
                 
-                {/* Credit Section added here */}
                 <div className="px-6 text-[10px] text-slate-500 mt-2 pb-6 border-t border-slate-800 pt-4 space-y-1">
                   <p className="font-bold text-slate-400">PRISMA Core Engine</p>
                   <p>Developed by <span className="font-bold text-slate-300">Tery Setiawan</span></p>
@@ -762,38 +627,21 @@
 
             {/* Mobile Bottom Bar */}
             <div className="no-print md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 z-50 flex justify-around py-2.5 text-[9px] text-slate-400 font-semibold">
-              <button onClick={() => setActiveTab("tutorial")} className={`flex flex-col items-center ${activeTab === "tutorial" ? "text-amber-400" : ""}`}>
-                <i className="fa-solid fa-book-open text-xs mb-1"></i>
-                <span>Guide</span>
-              </button>
-              <button onClick={() => setActiveTab("api-search")} className={`flex flex-col items-center ${activeTab === "api-search" ? "text-blue-400" : ""}`}>
-                <i className="fa-solid fa-globe text-xs mb-1"></i>
-                <span>Search</span>
-              </button>
-              <button onClick={() => setActiveTab("screening")} className={`flex flex-col items-center ${activeTab === "screening" ? "text-blue-400" : ""}`}>
-                <i className="fa-solid fa-square-poll-vertical text-xs mb-1"></i>
-                <span>Screening</span>
-              </button>
-              <button onClick={() => setActiveTab("rob")} className={`flex flex-col items-center ${activeTab === "rob" ? "text-blue-400" : ""}`}>
-                <i className="fa-solid fa-shield-virus text-xs mb-1"></i>
-                <span>Quality</span>
-              </button>
-              <button onClick={() => setActiveTab("flowchart")} className={`flex flex-col items-center ${activeTab === "flowchart" ? "text-blue-400" : ""}`}>
-                <i className="fa-solid fa-diagram-project text-xs mb-1"></i>
-                <span>Flowchart</span>
-              </button>
+              <button onClick={() => setActiveTab("tutorial")} className={`flex flex-col items-center ${activeTab === "tutorial" ? "text-amber-400" : ""}`}><i className="fa-solid fa-book-open text-xs mb-1"></i><span>Guide</span></button>
+              <button onClick={() => setActiveTab("api-search")} className={`flex flex-col items-center ${activeTab === "api-search" ? "text-blue-400" : ""}`}><i className="fa-solid fa-globe text-xs mb-1"></i><span>Search</span></button>
+              <button onClick={() => setActiveTab("screening")} className={`flex flex-col items-center ${activeTab === "screening" ? "text-blue-400" : ""}`}><i className="fa-solid fa-square-poll-vertical text-xs mb-1"></i><span>Screening</span></button>
+              <button onClick={() => setActiveTab("rob")} className={`flex flex-col items-center ${activeTab === "rob" ? "text-blue-400" : ""}`}><i className="fa-solid fa-shield-virus text-xs mb-1"></i><span>Quality</span></button>
+              <button onClick={() => setActiveTab("flowchart")} className={`flex flex-col items-center ${activeTab === "flowchart" ? "text-blue-400" : ""}`}><i className="fa-solid fa-diagram-project text-xs mb-1"></i><span>Flowchart</span></button>
             </div>
 
             <main className="flex-1 overflow-y-auto pb-16 md:pb-6 p-4 md:p-8 bg-slate-100 dark:bg-slate-900 transition-colors duration-150">
               
-              {/* TAB 0: PRISMA TUTORIAL */}
+              {}
               {activeTab === "tutorial" && (
                 <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
                   <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 text-white rounded-2xl p-8 shadow-lg flex justify-between items-center relative overflow-hidden">
-                    {/* Decorative Background Elements */}
                     <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white opacity-10"></div>
                     <div className="absolute bottom-0 right-32 -mb-12 w-40 h-40 rounded-full bg-black opacity-10"></div>
-                    
                     <div className="relative z-10">
                       <span className="bg-white/20 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">Interactive Visual Guide</span>
                       <h2 className="text-3xl font-extrabold mt-3 drop-shadow-md">PRISMA Workflow Guide</h2>
@@ -803,7 +651,6 @@
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Phase 1 */}
                     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                       <div className="flex items-center space-x-3 mb-4">
                         <div className="h-10 w-10 bg-gradient-to-br from-blue-400 to-indigo-600 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-md">1</div>
@@ -811,67 +658,45 @@
                       </div>
                       <div className="h-32 w-full bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-700 dark:to-slate-800 rounded-xl mb-4 flex items-center justify-center border border-blue-100 dark:border-slate-600 relative overflow-hidden group">
                         <i className="fa-solid fa-magnifying-glass-chart text-5xl text-blue-500 drop-shadow-md group-hover:scale-110 transition-transform duration-300"></i>
-                        <div className="absolute top-3 right-3 flex space-x-1.5 opacity-60">
-                          <div className="w-2.5 h-2.5 rounded-full bg-blue-400"></div>
-                          <div className="w-2.5 h-2.5 rounded-full bg-indigo-400"></div>
-                        </div>
                       </div>
                       <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 flex-1 leading-relaxed">The first step is discovering relevant literature across multiple databases to establish your baseline cohort.</p>
                       <ul className="text-[11px] text-slate-500 dark:text-slate-400 space-y-2">
                         <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Navigate to the <strong className="text-blue-600 dark:text-blue-400">Multi-Source API Search</strong> tab.</span></li>
-                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Query OpenAlex/CrossRef and click <strong className="text-blue-600 dark:text-blue-400">Import Draft</strong>.</span></li>
-                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Alternatively, paste text into the <strong className="text-blue-600 dark:text-blue-400">RIS / BibTeX Import</strong> tab.</span></li>
+                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Query databases and click <strong className="text-blue-600 dark:text-blue-400">Import Draft</strong>.</span></li>
                       </ul>
                     </div>
 
-                    {/* Phase 2 */}
                     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                       <div className="flex items-center space-x-3 mb-4">
                         <div className="h-10 w-10 bg-gradient-to-br from-amber-400 to-orange-600 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-md">2</div>
                         <h3 className="text-lg font-bold dark:text-white">Dual Blind Screening</h3>
                       </div>
                       <div className="h-32 w-full bg-gradient-to-br from-amber-50 to-orange-100 dark:from-slate-700 dark:to-slate-800 rounded-xl mb-4 flex items-center justify-center border border-amber-100 dark:border-slate-600 relative overflow-hidden group space-x-6">
-                        <div className="flex flex-col items-center">
-                          <i className="fa-solid fa-user-shield text-4xl text-amber-500 drop-shadow-md group-hover:-translate-x-2 transition-transform duration-300"></i>
-                          <span className="text-[9px] font-bold text-amber-600 mt-2">R1 (Alpha)</span>
-                        </div>
+                        <div className="flex flex-col items-center"><i className="fa-solid fa-user-shield text-4xl text-amber-500 drop-shadow-md group-hover:-translate-x-2 transition-transform duration-300"></i><span className="text-[9px] font-bold text-amber-600 mt-2">R1 (Alpha)</span></div>
                         <i className="fa-solid fa-eye-slash text-2xl text-slate-400/50"></i>
-                        <div className="flex flex-col items-center">
-                          <i className="fa-solid fa-user-shield text-4xl text-orange-500 drop-shadow-md group-hover:translate-x-2 transition-transform duration-300"></i>
-                          <span className="text-[9px] font-bold text-orange-600 mt-2">R2 (Beta)</span>
-                        </div>
+                        <div className="flex flex-col items-center"><i className="fa-solid fa-user-shield text-4xl text-orange-500 drop-shadow-md group-hover:translate-x-2 transition-transform duration-300"></i><span className="text-[9px] font-bold text-orange-600 mt-2">R2 (Beta)</span></div>
                       </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 flex-1 leading-relaxed">Rigorous screening removes irrelevant articles. This app uses a blind dual-reviewer system to eliminate human bias.</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 flex-1 leading-relaxed">Rigorous screening removes irrelevant articles. Use the blind dual-reviewer system to eliminate bias.</p>
                       <ul className="text-[11px] text-slate-500 dark:text-slate-400 space-y-2">
                         <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Go to the <strong className="text-orange-500">Dual Screening</strong> tab.</span></li>
-                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Ensure <strong className="text-orange-500">Blind Mode</strong> is checked to mask live votes.</span></li>
-                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Reviewers independently <strong className="text-emerald-600">Approve</strong> or <strong className="text-red-500">Exclude</strong>.</span></li>
                         <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>If votes disagree, resolve the red <strong className="text-rose-500">Conflict</strong> tag.</span></li>
                       </ul>
                     </div>
 
-                    {/* Phase 3 */}
                     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                       <div className="flex items-center space-x-3 mb-4">
                         <div className="h-10 w-10 bg-gradient-to-br from-violet-400 to-fuchsia-600 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-md">3</div>
                         <h3 className="text-lg font-bold dark:text-white">Quality Assessment</h3>
                       </div>
                       <div className="h-32 w-full bg-gradient-to-br from-violet-50 to-fuchsia-100 dark:from-slate-700 dark:to-slate-800 rounded-xl mb-4 flex items-center justify-center border border-violet-100 dark:border-slate-600 relative overflow-hidden group">
-                        <div className="relative">
-                          <i className="fa-solid fa-shield-virus text-6xl text-violet-500 drop-shadow-md group-hover:scale-110 transition-transform duration-300"></i>
-                          <i className="fa-solid fa-check-double absolute -bottom-1 -right-2 text-2xl text-fuchsia-500 bg-white dark:bg-slate-800 rounded-full border-2 border-white dark:border-slate-800"></i>
-                        </div>
+                        <div className="relative"><i className="fa-solid fa-shield-virus text-6xl text-violet-500 drop-shadow-md group-hover:scale-110 transition-transform duration-300"></i><i className="fa-solid fa-check-double absolute -bottom-1 -right-2 text-2xl text-fuchsia-500 bg-white dark:bg-slate-800 rounded-full border-2 border-white dark:border-slate-800"></i></div>
                       </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 flex-1 leading-relaxed">Once papers are formally included, their methodological quality and risk of bias must be carefully evaluated.</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 flex-1 leading-relaxed">Once papers are formally included, their methodological quality must be carefully evaluated.</p>
                       <ul className="text-[11px] text-slate-500 dark:text-slate-400 space-y-2">
-                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Open the <strong className="text-violet-600 dark:text-violet-400">Cochrane RoB 2</strong> tab.</span></li>
-                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Select an included paper from the left panel.</span></li>
-                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Evaluate the five standard bias domains (D1 through D5).</span></li>
-                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>The system auto-calculates an aggregated Risk Score.</span></li>
+                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Open the <strong className="text-violet-600 dark:text-violet-400">Cochrane RoB 2</strong> tab to evaluate the five standard bias domains.</span></li>
                       </ul>
                     </div>
 
-                    {/* Phase 4 */}
                     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                       <div className="flex items-center space-x-3 mb-4">
                         <div className="h-10 w-10 bg-gradient-to-br from-emerald-400 to-teal-600 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-md">4</div>
@@ -884,15 +709,14 @@
                       </div>
                       <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 flex-1 leading-relaxed">Generate the required PRISMA documentation to prepare your systematic review for academic publication.</p>
                       <ul className="text-[11px] text-slate-500 dark:text-slate-400 space-y-2">
-                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Open the <strong className="text-teal-600 dark:text-teal-400">Interactive Flowchart</strong> tab to see your pipeline numbers auto-mapped to the standard diagram.</span></li>
-                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Use the <strong className="text-teal-600 dark:text-teal-400">PRISMA 2020 Checklist</strong> tab to track your manuscript drafting compliance.</span></li>
+                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Open the <strong className="text-teal-600 dark:text-teal-400">Interactive Flowchart</strong> tab to see your pipeline numbers auto-mapped.</span></li>
                       </ul>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* TAB 1: MULTI-ENGINE DISCOVERY */}
+              {}
               {activeTab === "api-search" && (
                 <div className="space-y-6">
                   <div className="bg-gradient-to-r from-blue-700 to-indigo-800 text-white rounded-2xl p-6 shadow-md flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -908,24 +732,9 @@
                     <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Database Selector</span>
                       <div className="flex flex-wrap gap-2">
-                        <button 
-                          onClick={() => setSearchEngine("openalex")}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "openalex" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-880 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}
-                        >
-                          <i className="fa-solid fa-database mr-1"></i> OpenAlex API
-                        </button>
-                        <button 
-                          onClick={() => setSearchEngine("crossref")}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "crossref" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-880 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}
-                        >
-                          <i className="fa-solid fa-hashtag mr-1"></i> CrossRef DOI Registry
-                        </button>
-                        <button 
-                          onClick={() => setSearchEngine("scholar_guide")}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "scholar_guide" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-880 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}
-                        >
-                          <i className="fa-solid fa-graduation-cap mr-1"></i> Google Scholar Import Guide
-                        </button>
+                        <button onClick={() => setSearchEngine("openalex")} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "openalex" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-880 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}><i className="fa-solid fa-database mr-1"></i> OpenAlex API</button>
+                        <button onClick={() => setSearchEngine("crossref")} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "crossref" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-880 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}><i className="fa-solid fa-hashtag mr-1"></i> CrossRef DOI Registry</button>
+                        <button onClick={() => setSearchEngine("scholar_guide")} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "scholar_guide" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-880 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}><i className="fa-solid fa-graduation-cap mr-1"></i> Google Scholar Import Guide</button>
                       </div>
                     </div>
 
@@ -933,111 +742,47 @@
                       <div className="flex flex-col md:flex-row gap-3">
                         <div className="relative flex-1">
                           <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
-                          <input 
-                            type="text" 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") handleMultiEngineSearch(); }}
-                            className="w-full text-xs pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                            placeholder={`Type keywords or query parameters for ${searchEngine.toUpperCase()} (Pulls 50 max)...`}
-                          />
+                          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleMultiEngineSearch(); }} className="w-full text-xs pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:ring-1 focus:ring-blue-500 focus:outline-none" placeholder={`Type keywords or query parameters for ${searchEngine.toUpperCase()} (Pulls 50 max)...`} />
                         </div>
-                        <button 
-                          onClick={handleMultiEngineSearch}
-                          disabled={searchLoading}
-                          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2"
-                        >
-                          {searchLoading ? (
-                            <>
-                              <i className="fa-solid fa-circle-notch animate-spin"></i>
-                              <span>Searching API...</span>
-                            </>
-                          ) : (
-                            <>
-                              <i className="fa-solid fa-network-wired"></i>
-                              <span>Query Database</span>
-                            </>
-                          )}
+                        <button onClick={handleMultiEngineSearch} disabled={searchLoading} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2">
+                          {searchLoading ? <><i className="fa-solid fa-circle-notch animate-spin"></i><span>Searching...</span></> : <><i className="fa-solid fa-network-wired"></i><span>Query Database</span></>}
                         </button>
                       </div>
                     ) : (
                       <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-4">
-                        <div className="flex items-center space-x-2 font-bold text-slate-800 dark:text-white">
-                          <i className="fa-solid fa-circle-info text-blue-500"></i>
-                          <span>How to ingest papers from Google Scholar / PubMed</span>
-                        </div>
-                        <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                          Because Google Scholar blocks programmatic API access, direct integration isn't possible. Follow this simple 3-step workflow to safely import Google Scholar citations:
-                        </p>
+                        <div className="flex items-center space-x-2 font-bold text-slate-800 dark:text-white"><i className="fa-solid fa-circle-info text-blue-500"></i><span>How to ingest papers from Google Scholar</span></div>
+                        <p className="text-slate-600 dark:text-slate-400 leading-relaxed">Follow this 3-step workflow to safely import Google Scholar citations:</p>
                         <ol className="list-decimal list-inside space-y-2 text-slate-700 dark:text-slate-300 font-medium">
-                          <li>Perform your literature search query on <a href="https://scholar.google.com" target="_blank" className="text-blue-500 underline">Google Scholar</a>.</li>
+                          <li>Perform your literature search query on Google Scholar.</li>
                           <li>Click the <span className="font-bold">"Cite"</span> button below your target papers and select <span className="font-bold">"RefMan" (RIS)</span> or <span className="font-bold">"BibTeX"</span>.</li>
                           <li>Copy the downloaded raw file text and paste it into our <span className="font-bold cursor-pointer text-blue-500" onClick={() => setActiveTab("custom-import")}>RIS / BibTeX Import tab</span> to ingest them instantly.</li>
                         </ol>
                       </div>
                     )}
 
-                    {searchError && (
-                      <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 text-xs rounded-lg font-medium">
-                        <i className="fa-solid fa-triangle-exclamation mr-1.5"></i>
-                        {searchError}
-                      </div>
-                    )}
+                    {searchError && <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 text-xs rounded-lg font-medium"><i className="fa-solid fa-triangle-exclamation mr-1.5"></i>{searchError}</div>}
                   </div>
 
                   {searchEngine !== "scholar_guide" && (
                     <div className="space-y-3">
-                      <div className="flex justify-between items-center px-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Indexed Search Results ({searchResults.length})</span>
-                      </div>
-
+                      <div className="flex justify-between items-center px-1"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Indexed Search Results ({searchResults.length})</span></div>
                       {searchResults.length === 0 ? (
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center text-slate-400">
-                          <i className="fa-solid fa-flask-vial text-3xl mb-3 text-slate-300"></i>
-                          <h4 className="font-bold text-xs text-slate-700 dark:text-slate-300">No Query Executed</h4>
-                          <p className="text-[11px] mt-1 max-w-xs mx-auto">Input a query above to fetch verified academic records directly.</p>
+                          <i className="fa-solid fa-flask-vial text-3xl mb-3 text-slate-300"></i><h4 className="font-bold text-xs text-slate-700 dark:text-slate-300">No Query Executed</h4><p className="text-[11px] mt-1 max-w-xs mx-auto">Input a query above to fetch verified records.</p>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 gap-4">
                           {searchResults.map((paper) => {
                             const isAlreadyImported = articles.some(a => a.title.toLowerCase().trim() === paper.title.toLowerCase().trim());
                             return (
-                              <div 
-                                key={paper.id} 
-                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 hover:border-blue-400 dark:hover:border-blue-500 transition-all-200"
-                              >
+                              <div key={paper.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 hover:border-blue-400 dark:hover:border-blue-500 transition-all-200">
                                 <div className="flex justify-between items-start gap-4">
-                                  <div className="space-y-1">
-                                    <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-snug">{paper.title}</h3>
-                                    <p className="text-[10px] text-slate-400 font-semibold">{paper.authors} • <span className="italic text-slate-500">{paper.journal}</span></p>
-                                  </div>
-                                  <button 
-                                    onClick={() => importToScreening(paper)}
-                                    disabled={isAlreadyImported}
-                                    className={`px-3 py-1.5 text-[10px] font-extrabold rounded-lg flex items-center space-x-1 transition flex-shrink-0 ${
-                                      isAlreadyImported 
-                                        ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 cursor-not-allowed"
-                                        : "bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white"
-                                    }`}
-                                  >
-                                    {isAlreadyImported ? (
-                                      <>
-                                        <i className="fa-solid fa-circle-check"></i>
-                                        <span>In Review</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <i className="fa-solid fa-plus"></i>
-                                        <span>Import Draft</span>
-                                      </>
-                                    )}
+                                  <div className="space-y-1"><h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-snug">{paper.title}</h3><p className="text-[10px] text-slate-400 font-semibold">{paper.authors} • <span className="italic text-slate-500">{paper.journal}</span></p></div>
+                                  <button onClick={() => importToScreening(paper)} disabled={isAlreadyImported} className={`px-3 py-1.5 text-[10px] font-extrabold rounded-lg flex items-center space-x-1 transition flex-shrink-0 ${isAlreadyImported ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 cursor-not-allowed" : "bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white"}`}>
+                                    {isAlreadyImported ? <><i className="fa-solid fa-circle-check"></i><span>In Review</span></> : <><i className="fa-solid fa-plus"></i><span>Import Draft</span></>}
                                   </button>
                                 </div>
-
-                                <div className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-855 p-3 rounded-lg border border-slate-100 dark:border-slate-800/60 line-clamp-3">
-                                  <span className="font-semibold text-slate-400 block mb-1">ABSTRACT PREVIEW:</span>
-                                  {paper.abstract}
-                                </div>
+                                <div className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-855 p-3 rounded-lg border border-slate-100 dark:border-slate-800/60 line-clamp-3"><span className="font-semibold text-slate-400 block mb-1">ABSTRACT PREVIEW:</span>{paper.abstract}</div>
                               </div>
                             );
                           })}
@@ -1045,82 +790,47 @@
                       )}
                     </div>
                   )}
-
                 </div>
               )}
 
-              {/* TAB 2: REFERENCE MANAGER RAW FILE IMPORTER */}
+              {}
               {activeTab === "custom-import" && (
                 <div className="space-y-6">
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
                     <div className="flex items-center space-x-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
-                      <div className="h-8 w-8 bg-blue-100 dark:bg-slate-800 text-blue-600 rounded-lg flex items-center justify-center">
-                        <i className="fa-solid fa-file-invoice"></i>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold dark:text-white">Bibliography Raw Ingest</h3>
-                        <p className="text-xs text-slate-500">Paste standard .ris (EndNote/Zotero) or BibTeX entries directly in the block below.</p>
-                      </div>
+                      <div className="h-8 w-8 bg-blue-100 dark:bg-slate-800 text-blue-600 rounded-lg flex items-center justify-center"><i className="fa-solid fa-file-invoice"></i></div>
+                      <div><h3 className="text-sm font-bold dark:text-white">Bibliography Raw Ingest</h3><p className="text-xs text-slate-500">Paste standard .ris or BibTeX entries directly in the block below.</p></div>
                     </div>
-
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Raw Code block</label>
-                      <textarea 
-                        rows="8"
-                        value={rawIngestText}
-                        onChange={(e) => setRawIngestText(e.target.value)}
-                        className="w-full text-xs font-mono p-4 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                        placeholder={`RIS Example:\nTY  - JOUR\nTI  - AI assessment of diagnostic skin lesions\n...`}
-                      />
+                      <textarea rows="8" value={rawIngestText} onChange={(e) => setRawIngestText(e.target.value)} className="w-full text-xs font-mono p-4 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:ring-1 focus:ring-blue-500 focus:outline-none" placeholder="RIS or BibTeX Example Text..." />
                     </div>
-
-                    <div className="pt-2 flex justify-end">
-                      <button 
-                        onClick={handleRawIngest}
-                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
-                      >
-                        <i className="fa-solid fa-microchip"></i>
-                        <span>Ingest Citations</span>
-                      </button>
-                    </div>
+                    <div className="pt-2 flex justify-end"><button onClick={handleRawIngest} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5"><i className="fa-solid fa-microchip"></i><span>Ingest Citations</span></button></div>
                   </div>
                 </div>
               )}
 
-              {/* TAB 3: DUAL SCREENING TERMINAL WITH KEYWORD HIGHLIGHTING */}
+              {}
               {activeTab === "screening" && (
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-[calc(100vh-180px)] overflow-hidden">
-                  
-                  {/* Left list pane */}
                   <div className="xl:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden shadow-sm">
                     <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-3 bg-slate-50 dark:bg-slate-800/40">
                       <div className="flex items-center justify-between">
                         <h3 className="text-xs font-bold dark:text-white">Active Screening Stack</h3>
                         <div className="flex items-center space-x-3">
                           <label className="flex items-center space-x-1.5 cursor-pointer text-[10px] text-slate-500 bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded">
-                            <input 
-                              type="checkbox" 
-                              checked={blindMode} 
-                              onChange={(e) => setBlindMode(e.target.checked)} 
-                              className="rounded text-blue-600 focus:ring-0 cursor-pointer"
-                            />
+                            <input type="checkbox" checked={blindMode} onChange={(e) => setBlindMode(e.target.checked)} className="rounded text-blue-600 focus:ring-0 cursor-pointer" />
                             <span className="font-bold dark:text-slate-300">Blind Mode</span>
                           </label>
-                          <span className="text-[10px] font-bold text-slate-500">Simulating: {currentReviewer === "reviewerA" ? "Reviewer 1" : "Reviewer 2"}</span>
+                          <span className="text-[10px] font-bold text-slate-500">Simulating: {currentReviewer === "reviewerA" ? "R1" : "R2"}</span>
                         </div>
                       </div>
-
                       <div className="flex flex-wrap gap-1">
                         {["All", "Identified", "Conflict", "Sought_Retrieval", "Eligibility", "Included", "Excluded_Screening", "Excluded_Eligibility"].map(st => {
                           const count = st === "All" ? articles.length : articles.filter(a => a.status === st).length;
                           return (
-                            <button 
-                              key={st}
-                              onClick={() => setScreeningFilter(st)}
-                              className={`px-2 py-1 rounded text-[9px] font-bold transition ${screeningFilter === st ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900" : "bg-white dark:bg-slate-855 text-slate-500 border border-slate-200 dark:border-slate-700 hover:bg-slate-105"}`}
-                            >
-                              <span>{st.replace('_', ' ')}</span>
-                              <span className="ml-0.5 opacity-70">({count})</span>
+                            <button key={st} onClick={() => setScreeningFilter(st)} className={`px-2 py-1 rounded text-[9px] font-bold transition ${screeningFilter === st ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900" : "bg-white dark:bg-slate-855 text-slate-500 border border-slate-200 dark:border-slate-700 hover:bg-slate-105"}`}>
+                              <span>{st.replace('_', ' ')}</span><span className="ml-0.5 opacity-70">({count})</span>
                             </button>
                           );
                         })}
@@ -1129,52 +839,28 @@
 
                     <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 no-scrollbar">
                       {articles.filter(a => screeningFilter === "All" || a.status === screeningFilter).length === 0 ? (
-                        <div className="p-8 text-center text-slate-400 dark:text-slate-500 my-auto">
-                          <i className="fa-solid fa-folder-open text-2xl mb-2 text-slate-300"></i>
-                          <p className="text-xs font-semibold">No records in this stack</p>
-                          <p className="text-[10px] mt-1 leading-relaxed">Import papers using the Discovery Search or RIS Import tabs to populate this dashboard.</p>
-                        </div>
+                        <div className="p-8 text-center text-slate-400 dark:text-slate-500 my-auto"><i className="fa-solid fa-folder-open text-2xl mb-2 text-slate-300"></i><p className="text-xs font-semibold">No records in this stack</p></div>
                       ) : (
                         articles.filter(a => screeningFilter === "All" || a.status === screeningFilter).map(art => {
                           const isSelected = selectedArtId === art.id;
                           return (
-                            <div 
-                              key={art.id}
-                              onClick={() => setSelectedArtId(art.id)}
-                              className={`p-4 text-left cursor-pointer transition ${isSelected ? "bg-blue-50/50 dark:bg-blue-950/20 border-l-4 border-blue-500" : "hover:bg-slate-50 dark:hover:bg-slate-800/40"}`}
-                            >
+                            <div key={art.id} onClick={() => setSelectedArtId(art.id)} className={`p-4 text-left cursor-pointer transition ${isSelected ? "bg-blue-50/50 dark:bg-blue-950/20 border-l-4 border-blue-500" : "hover:bg-slate-50 dark:hover:bg-slate-800/40"}`}>
                               <div className="flex justify-between items-center space-x-2">
                                 <span className="bg-slate-100 dark:bg-slate-800 text-[8px] font-bold px-1.5 py-0.5 rounded text-slate-500">{art.source}</span>
-                                <span className={`text-[8px] font-bold px-2 py-0.5 rounded ${
-                                  art.status === "Conflict" ? "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400" :
-                                  art.status === "Included" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" :
-                                  "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-                                }`}>{art.status.replace('_', ' ')}</span>
+                                <span className={`text-[8px] font-bold px-2 py-0.5 rounded ${art.status === "Conflict" ? "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400" : art.status === "Included" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"}`}>{art.status.replace('_', ' ')}</span>
                               </div>
-
                               <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 mt-2 line-clamp-2">{art.title}</h4>
                               <p className="text-[10px] text-slate-500 mt-1">{art.authors}</p>
-
                               <div className="mt-3 flex items-center space-x-2 text-[9px] border-t border-slate-50 dark:border-slate-800/60 pt-2">
                                 <span className="text-slate-400">Votes:</span>
                                 {(() => {
                                   const myVote = art.reviewerVotes[currentReviewer];
                                   const canSeeR1 = currentReviewer === 'reviewerA' || !blindMode || myVote !== null;
                                   const canSeeR2 = currentReviewer === 'reviewerB' || !blindMode || myVote !== null;
-                                  
                                   const r1Display = canSeeR1 ? (art.reviewerVotes.reviewerA || "Pending") : (art.reviewerVotes.reviewerA ? "Masked" : "Pending");
                                   const r2Display = canSeeR2 ? (art.reviewerVotes.reviewerB || "Pending") : (art.reviewerVotes.reviewerB ? "Masked" : "Pending");
-
                                   return (
-                                    <>
-                                      <span className={`font-semibold ${r1Display !== "Pending" ? "text-slate-600 dark:text-slate-300" : "text-slate-400"} ${r1Display === "Masked" ? "italic" : ""}`}>
-                                        R1: {r1Display}
-                                      </span>
-                                      <span className="text-slate-300 dark:text-slate-700">|</span>
-                                      <span className={`font-semibold ${r2Display !== "Pending" ? "text-slate-600 dark:text-slate-300" : "text-slate-400"} ${r2Display === "Masked" ? "italic" : ""}`}>
-                                        R2: {r2Display}
-                                      </span>
-                                    </>
+                                    <><span className={`font-semibold ${r1Display !== "Pending" ? "text-slate-600 dark:text-slate-300" : "text-slate-400"} ${r1Display === "Masked" ? "italic" : ""}`}>R1: {r1Display}</span><span className="text-slate-300 dark:text-slate-700">|</span><span className={`font-semibold ${r2Display !== "Pending" ? "text-slate-600 dark:text-slate-300" : "text-slate-400"} ${r2Display === "Masked" ? "italic" : ""}`}>R2: {r2Display}</span></>
                                   );
                                 })()}
                               </div>
@@ -1185,114 +871,45 @@
                     </div>
                   </div>
 
-                  {/* Right assessment pane */}
                   <div className="xl:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden shadow-sm">
                     {(() => {
                       const active = articles.find(a => a.id === selectedArtId);
-                      if (!active) {
-                        return (
-                          <div className="p-12 text-center h-full flex flex-col items-center justify-center text-slate-400">
-                            <i className="fa-solid fa-list-check text-3xl mb-3 text-slate-300"></i>
-                            <h4 className="font-bold">No Article Selected</h4>
-                            <p className="text-[11px] mt-1">Select an abstract on the left to begin dual-blind screening.</p>
-                          </div>
-                        );
-                      }
+                      if (!active) return <div className="p-12 text-center h-full flex flex-col items-center justify-center text-slate-400"><i className="fa-solid fa-list-check text-3xl mb-3 text-slate-300"></i><h4 className="font-bold">No Article Selected</h4></div>;
                       return (
                         <div className="flex-1 flex flex-col justify-between overflow-hidden">
                           <div className="p-6 overflow-y-auto space-y-5 flex-1">
-                            
                             <div className="border-b border-slate-100 dark:border-slate-800 pb-4 space-y-2">
-                              <div className="flex items-center space-x-2 text-xs text-slate-400">
-                                <span className="bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded font-bold text-[9px] uppercase">{active.source}</span>
-                                <span>•</span>
-                                <span>{active.journal}</span>
-                              </div>
+                              <div className="flex items-center space-x-2 text-xs text-slate-400"><span className="bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded font-bold text-[9px] uppercase">{active.source}</span><span>•</span><span>{active.journal}</span></div>
                               <h3 className="text-sm font-extrabold text-slate-950 dark:text-white leading-snug">{active.title}</h3>
                               <p className="text-[10px] text-slate-400 font-semibold">By: <span className="font-normal text-slate-500">{active.authors}</span></p>
                             </div>
-
                             <div className="p-3 bg-blue-50/50 dark:bg-slate-80/40 rounded-xl border border-slate-200/50 dark:border-slate-700/50 space-y-1.5">
                               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PICO Key Highlighter (Comma-Separated)</label>
-                              <input 
-                                type="text"
-                                value={picoKeywords}
-                                onChange={(e) => setPicoKeywords(e.target.value)}
-                                className="w-full text-xs p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none dark:text-white"
-                                placeholder="e.g. randomized, trial, diagnostic"
-                              />
+                              <input type="text" value={picoKeywords} onChange={(e) => setPicoKeywords(e.target.value)} className="w-full text-xs p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none dark:text-white" placeholder="e.g. randomized, trial, diagnostic" />
                             </div>
-
                             <div className="bg-slate-50 dark:bg-slate-855 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80 space-y-2">
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Review Assessment Log</span>
-                              
                               <div className="grid grid-cols-2 gap-4 text-xs">
                                 <div className="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                                  <div>
-                                    <span className="text-[10px] text-slate-400 block font-semibold">Reviewer 1 (Alpha):</span>
-                                    <span className={`font-extrabold text-slate-700 dark:text-slate-300 ${(!active.reviewerVotes.reviewerA) ? "opacity-50" : ""}`}>
-                                      {(() => {
-                                        if (currentReviewer === 'reviewerA' || !blindMode) return active.reviewerVotes.reviewerA || "Waiting...";
-                                        if (active.reviewerVotes.reviewerB) return active.reviewerVotes.reviewerA || "Waiting..."; 
-                                        return active.reviewerVotes.reviewerA ? "Hidden (Blind)" : "Waiting...";
-                                      })()}
-                                    </span>
-                                  </div>
-                                  {(() => {
-                                    const v = (currentReviewer === 'reviewerA' || !blindMode || active.reviewerVotes.reviewerB) ? active.reviewerVotes.reviewerA : null;
-                                    const isMasked = active.reviewerVotes.reviewerA && !v;
-                                    if (isMasked) return <i className="fa-solid fa-eye-slash text-slate-400"></i>;
-                                    if (v === "Approve") return <i className="fa-solid fa-circle-check text-emerald-500"></i>;
-                                    if (v === "Exclude") return <i className="fa-solid fa-circle-xmark text-red-500"></i>;
-                                    return <i className="fa-solid fa-clock text-slate-300 dark:text-slate-600"></i>;
-                                  })()}
+                                  <div><span className="text-[10px] text-slate-400 block font-semibold">Reviewer 1 (Alpha):</span><span className={`font-extrabold text-slate-700 dark:text-slate-300 ${(!active.reviewerVotes.reviewerA) ? "opacity-50" : ""}`}>{(() => { if (currentReviewer === 'reviewerA' || !blindMode) return active.reviewerVotes.reviewerA || "Waiting..."; if (active.reviewerVotes.reviewerB) return active.reviewerVotes.reviewerA || "Waiting..."; return active.reviewerVotes.reviewerA ? "Hidden (Blind)" : "Waiting..."; })()}</span></div>
+                                  {(() => { const v = (currentReviewer === 'reviewerA' || !blindMode || active.reviewerVotes.reviewerB) ? active.reviewerVotes.reviewerA : null; const isMasked = active.reviewerVotes.reviewerA && !v; if (isMasked) return <i className="fa-solid fa-eye-slash text-slate-400"></i>; if (v === "Approve") return <i className="fa-solid fa-circle-check text-emerald-500"></i>; if (v === "Exclude") return <i className="fa-solid fa-circle-xmark text-red-500"></i>; return <i className="fa-solid fa-clock text-slate-300 dark:text-slate-600"></i>; })()}
                                 </div>
-
                                 <div className="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                                  <div>
-                                    <span className="text-[10px] text-slate-400 block font-semibold">Reviewer 2 (Beta):</span>
-                                    <span className={`font-extrabold text-slate-700 dark:text-slate-300 ${(!active.reviewerVotes.reviewerB) ? "opacity-50" : ""}`}>
-                                      {(() => {
-                                        if (currentReviewer === 'reviewerB' || !blindMode) return active.reviewerVotes.reviewerB || "Waiting...";
-                                        if (active.reviewerVotes.reviewerA) return active.reviewerVotes.reviewerB || "Waiting..."; 
-                                        return active.reviewerVotes.reviewerB ? "Hidden (Blind)" : "Waiting...";
-                                      })()}
-                                    </span>
-                                  </div>
-                                  {(() => {
-                                    const v = (currentReviewer === 'reviewerB' || !blindMode || active.reviewerVotes.reviewerA) ? active.reviewerVotes.reviewerB : null;
-                                    const isMasked = active.reviewerVotes.reviewerB && !v;
-                                    if (isMasked) return <i className="fa-solid fa-eye-slash text-slate-400"></i>;
-                                    if (v === "Approve") return <i className="fa-solid fa-circle-check text-emerald-500"></i>;
-                                    if (v === "Exclude") return <i className="fa-solid fa-circle-xmark text-red-500"></i>;
-                                    return <i className="fa-solid fa-clock text-slate-300 dark:text-slate-600"></i>;
-                                  })()}
+                                  <div><span className="text-[10px] text-slate-400 block font-semibold">Reviewer 2 (Beta):</span><span className={`font-extrabold text-slate-700 dark:text-slate-300 ${(!active.reviewerVotes.reviewerB) ? "opacity-50" : ""}`}>{(() => { if (currentReviewer === 'reviewerB' || !blindMode) return active.reviewerVotes.reviewerB || "Waiting..."; if (active.reviewerVotes.reviewerA) return active.reviewerVotes.reviewerB || "Waiting..."; return active.reviewerVotes.reviewerB ? "Hidden (Blind)" : "Waiting..."; })()}</span></div>
+                                  {(() => { const v = (currentReviewer === 'reviewerB' || !blindMode || active.reviewerVotes.reviewerA) ? active.reviewerVotes.reviewerB : null; const isMasked = active.reviewerVotes.reviewerB && !v; if (isMasked) return <i className="fa-solid fa-eye-slash text-slate-400"></i>; if (v === "Approve") return <i className="fa-solid fa-circle-check text-emerald-500"></i>; if (v === "Exclude") return <i className="fa-solid fa-circle-xmark text-red-500"></i>; return <i className="fa-solid fa-clock text-slate-300 dark:text-slate-600"></i>; })()}
                                 </div>
                               </div>
                             </div>
-
                             <div className="space-y-1">
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Structured Abstract Context</span>
-                              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-855 p-4 rounded-xl border border-slate-100 dark:border-slate-800/60 whitespace-pre-wrap">
-                                {highlightKeywords(active.abstract)}
-                              </p>
+                              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-855 p-4 rounded-xl border border-slate-100 dark:border-slate-800/60 whitespace-pre-wrap">{highlightKeywords(active.abstract)}</p>
                             </div>
                           </div>
-
                           <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-3">
-                            <div className="text-center md:text-left">
-                              <span className="text-[9px] font-bold text-slate-400 uppercase block">Active Investigator:</span>
-                              <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
-                                {currentReviewer === "reviewerA" ? "Reviewer 1 (Alpha)" : "Reviewer 2 (Beta)"}
-                              </span>
-                            </div>
-
+                            <div className="text-center md:text-left"><span className="text-[9px] font-bold text-slate-400 uppercase block">Active Investigator:</span><span className="text-xs font-bold text-blue-600 dark:text-blue-400">{currentReviewer === "reviewerA" ? "Reviewer 1 (Alpha)" : "Reviewer 2 (Beta)"}</span></div>
                             {active.status === "Conflict" ? (
                               <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/60 p-3 rounded-xl flex items-center justify-between w-full md:w-auto gap-4">
-                                <div className="text-left">
-                                  <span className="text-[10px] font-bold text-rose-500 uppercase block"><i className="fa-solid fa-triangle-exclamation"></i> Conflict Flagged</span>
-                                  <span className="text-[9px] text-slate-500">Votes disagree. Resolve as Principal Investigator:</span>
-                                </div>
+                                <div className="text-left"><span className="text-[10px] font-bold text-rose-500 uppercase block"><i className="fa-solid fa-triangle-exclamation"></i> Conflict Flagged</span><span className="text-[9px] text-slate-500">Votes disagree. Resolve as Principal Investigator:</span></div>
                                 <div className="flex space-x-2">
                                   <button onClick={() => resolveConflict(active.id, "Approve")} className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] font-extrabold rounded-lg">Approve Entry</button>
                                   <button onClick={() => resolveConflict(active.id, "Exclude")} className="px-3 py-1.5 bg-red-600 text-white text-[10px] font-extrabold rounded-lg">Exclude Entry</button>
@@ -1300,67 +917,30 @@
                               </div>
                             ) : (
                               <div className="flex space-x-2">
-                                <button 
-                                  onClick={() => handleReviewerVote(active.id, currentReviewer, "Approve")}
-                                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center space-x-1"
-                                >
-                                  <i className="fa-solid fa-circle-check"></i>
-                                  <span>Approve Abstract</span>
-                                </button>
-                                <button 
-                                  onClick={() => handleReviewerVote(active.id, currentReviewer, "Exclude")}
-                                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center space-x-1"
-                                >
-                                  <i className="fa-solid fa-circle-xmark"></i>
-                                  <span>Exclude Record</span>
-                                </button>
+                                <button onClick={() => handleReviewerVote(active.id, currentReviewer, "Approve")} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center space-x-1"><i className="fa-solid fa-circle-check"></i><span>Approve Abstract</span></button>
+                                <button onClick={() => handleReviewerVote(active.id, currentReviewer, "Exclude")} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center space-x-1"><i className="fa-solid fa-circle-xmark"></i><span>Exclude Record</span></button>
                               </div>
                             )}
-
-                            {active.status === "Sought_Retrieval" && (
-                              <div className="flex items-center space-x-2">
-                                <span className="text-[10px] text-slate-500">Retrieval State:</span>
-                                <button onClick={() => {
-                                  setArticles(prev => prev.map(a => a.id === active.id ? { ...a, status: "Eligibility" } : a));
-                                  triggerToast("Retrieved. Moving to eligibility trial.", "success");
-                                }} className="px-2.5 py-1.5 bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 rounded-lg">Retrieved Full-Text</button>
-                              </div>
-                            )}
-
-                            {active.status === "Eligibility" && (
-                              <div className="flex items-center space-x-2">
-                                <span className="text-[10px] text-slate-500">Eligibility trial:</span>
-                                <button onClick={() => {
-                                  setArticles(prev => prev.map(a => a.id === active.id ? { ...a, status: "Included" } : a));
-                                  triggerToast("Study successfully approved for meta-analysis cohort!", "success");
-                                }} className="px-2.5 py-1.5 bg-emerald-600 text-white text-[10px] font-extrabold rounded-lg">Include Study</button>
-                                <button onClick={() => {
-                                  setArticles(prev => prev.map(a => a.id === active.id ? { ...a, status: "Excluded_Eligibility", exclusionReason: "Wrong Study Design" } : a));
-                                  triggerToast("Study excluded at Full-Text appraisal.", "warning");
-                                }} className="px-2.5 py-1.5 bg-red-600 text-white text-[10px] font-extrabold rounded-lg">Exclude</button>
-                              </div>
-                            )}
+                            {active.status === "Sought_Retrieval" && <div className="flex items-center space-x-2"><span className="text-[10px] text-slate-500">Retrieval State:</span><button onClick={() => { setArticles(prev => prev.map(a => a.id === active.id ? { ...a, status: "Eligibility" } : a)); triggerToast("Retrieved.", "success"); }} className="px-2.5 py-1.5 bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 rounded-lg">Retrieved Full-Text</button></div>}
+                            {active.status === "Eligibility" && <div className="flex items-center space-x-2"><span className="text-[10px] text-slate-500">Eligibility trial:</span><button onClick={() => { setArticles(prev => prev.map(a => a.id === active.id ? { ...a, status: "Included" } : a)); triggerToast("Study Included", "success"); }} className="px-2.5 py-1.5 bg-emerald-600 text-white text-[10px] font-extrabold rounded-lg">Include Study</button><button onClick={() => { setArticles(prev => prev.map(a => a.id === active.id ? { ...a, status: "Excluded_Eligibility" } : a)); triggerToast("Study excluded.", "warning"); }} className="px-2.5 py-1.5 bg-red-600 text-white text-[10px] font-extrabold rounded-lg">Exclude</button></div>}
                           </div>
                         </div>
                       );
                     })()}
                   </div>
-
                 </div>
               )}
 
-              {/* TAB 4: COCHRANE RISK OF BIAS 2 (RoB 2) MODULE */}
+              {}
               {activeTab === "rob" && (
                 <div className="space-y-6">
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-2">
                     <h3 className="text-sm font-bold dark:text-white">Cochrane Risk of Bias Assessment Workspace (RoB 2)</h3>
-                    <p className="text-xs text-slate-500 leading-relaxed">Evaluating study bias parameters is required to meet PRISMA Item 11 & 18. Update ratings across five key methodological domains to compile an interactive bias profile.</p>
+                    <p className="text-xs text-slate-500 leading-relaxed">Update ratings across five key methodological domains to compile an interactive bias profile.</p>
                   </div>
-
                   <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                     <div className="xl:col-span-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-3 border-b pb-2">Included Synthesis Cohort</span>
-                      
                       {articles.filter(a => a.status === "Included").length === 0 ? (
                         <p className="text-center text-[11px] text-slate-400 p-6">No studies are currently marked "Included" in the screening dashboard.</p>
                       ) : (
@@ -1368,89 +948,41 @@
                           {articles.filter(a => a.status === "Included").map(art => {
                             const isSel = art.id === selectedArtId;
                             return (
-                              <button 
-                                key={art.id}
-                                onClick={() => setSelectedArtId(art.id)}
-                                className={`w-full text-left px-3.5 py-2.5 rounded-lg text-xs font-semibold flex justify-between items-center transition ${isSel ? "bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400" : "text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-80/40 dark:text-slate-300"}`}
-                              >
+                              <button key={art.id} onClick={() => setSelectedArtId(art.id)} className={`w-full text-left px-3.5 py-2.5 rounded-lg text-xs font-semibold flex justify-between items-center transition ${isSel ? "bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400" : "text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-80/40 dark:text-slate-300"}`}>
                                 <span className="truncate pr-2">{art.title}</span>
-                                <span className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold ${
-                                  art.rob?.summary === "Low" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400" :
-                                  art.rob?.summary === "Some Concerns" ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400" :
-                                  "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-400"
-                                }`}>
-                                  {art.rob?.summary || "Low"}
-                                </span>
+                                <span className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold ${art.rob?.summary === "Low" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400" : art.rob?.summary === "Some Concerns" ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400" : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-400"}`}>{art.rob?.summary || "Low"}</span>
                               </button>
                             );
                           })}
                         </div>
                       )}
                     </div>
-
                     <div className="xl:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                       {(() => {
                         const target = articles.find(a => a.id === selectedArtId && a.status === "Included");
-                        if (!target) {
-                          return (
-                            <div className="p-12 text-center text-slate-400">
-                              <i className="fa-solid fa-clipboard-question text-3xl mb-3 text-slate-300"></i>
-                              <h4 className="font-bold">No Included Study Selected</h4>
-                              <p className="text-xs mt-1">Select an approved/included study from the left sidebar to calibrate its Risk of Bias domains.</p>
-                            </div>
-                          );
-                        }
+                        if (!target) return <div className="p-12 text-center text-slate-400"><i className="fa-solid fa-clipboard-question text-3xl mb-3 text-slate-300"></i><h4 className="font-bold">No Included Study Selected</h4></div>;
                         return (
                           <div className="space-y-6">
-                            <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
-                              <span className="text-[9px] text-brand-600 dark:text-brand-400 uppercase font-bold tracking-widest block">Active Cochrane Bias Log</span>
-                              <h3 className="text-xs font-bold text-slate-950 dark:text-white leading-normal mt-1">{target.title}</h3>
-                            </div>
-
+                            <div className="border-b border-slate-100 dark:border-slate-800 pb-3"><span className="text-[9px] text-brand-600 dark:text-brand-400 uppercase font-bold tracking-widest block">Active Cochrane Bias Log</span><h3 className="text-xs font-bold text-slate-950 dark:text-white leading-normal mt-1">{target.title}</h3></div>
                             <div className="space-y-4">
                               {COCHRANE_ROB_DOMAINS.map(domain => {
                                 const score = target.rob?.[domain.id] || "Low";
                                 return (
                                   <div key={domain.id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-3.5 bg-slate-50 dark:bg-slate-855 rounded-xl border border-slate-100 dark:border-slate-800/65 gap-3">
                                     <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{domain.name}</span>
-                                    
                                     <div className="flex space-x-1.5 flex-shrink-0">
                                       {["Low", "Some Concerns", "High"].map(level => {
                                         const isSel = score === level;
-                                        return (
-                                          <button 
-                                            key={level}
-                                            onClick={() => updateRoBDomain(target.id, domain.id, level)}
-                                            className={`px-3 py-1 text-[9px] font-extrabold rounded-md transition border ${
-                                              isSel 
-                                                ? level === "Low" ? "bg-emerald-600 text-white border-emerald-600" :
-                                                  level === "Some Concerns" ? "bg-amber-500 text-white border-amber-500" :
-                                                  "bg-red-600 text-white border-red-600"
-                                                : "bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-105"
-                                            }`}
-                                          >
-                                            {level}
-                                          </button>
-                                        );
+                                        return <button key={level} onClick={() => updateRoBDomain(target.id, domain.id, level)} className={`px-3 py-1 text-[9px] font-extrabold rounded-md transition border ${isSel ? level === "Low" ? "bg-emerald-600 text-white border-emerald-600" : level === "Some Concerns" ? "bg-amber-500 text-white border-amber-500" : "bg-red-600 text-white border-red-600" : "bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-105"}`}>{level}</button>;
                                       })}
                                     </div>
                                   </div>
                                 );
                               })}
                             </div>
-
                             <div className="bg-slate-900 text-white rounded-xl p-4 flex justify-between items-center shadow-inner">
-                              <div>
-                                <span className="text-[9px] text-slate-400 uppercase font-bold block">Aggregated Risk score</span>
-                                <span className="text-xs font-bold">Overall Risk of Bias Evaluation:</span>
-                              </div>
-                              <span className={`px-4 py-1.5 rounded-lg text-xs font-extrabold shadow-sm ${
-                                target.rob?.summary === "Low" ? "bg-emerald-600 text-white" :
-                                target.rob?.summary === "Some Concerns" ? "bg-amber-500 text-white" :
-                                "bg-red-600 text-white"
-                              }`}>
-                                {target.rob?.summary || "Low"} Risk
-                              </span>
+                              <div><span className="text-[9px] text-slate-400 uppercase font-bold block">Aggregated Risk score</span><span className="text-xs font-bold">Overall Risk of Bias Evaluation:</span></div>
+                              <span className={`px-4 py-1.5 rounded-lg text-xs font-extrabold shadow-sm ${target.rob?.summary === "Low" ? "bg-emerald-600 text-white" : target.rob?.summary === "Some Concerns" ? "bg-amber-500 text-white" : "bg-red-600 text-white"}`}>{target.rob?.summary || "Low"} Risk</span>
                             </div>
                           </div>
                         );
@@ -1460,93 +992,44 @@
                 </div>
               )}
 
-              {/* TAB 5: INTERACTIVE PRISMA FLOWCHART */}
+              {}
               {activeTab === "flowchart" && (
                 <div className="space-y-6">
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
                     <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
-                      <div>
-                        <h3 className="text-sm font-bold dark:text-white">PRISMA 2020 Flow Diagram</h3>
-                        <p className="text-xs text-slate-500">Automated structural flow mapping of bibliographic entries across active pipeline stages.</p>
-                      </div>
-                      <button onClick={() => window.print()} className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition">
-                        <i className="fa-solid fa-print"></i>
-                        <span>Print Flow Chart</span>
-                      </button>
+                      <div><h3 className="text-sm font-bold dark:text-white">PRISMA 2020 Flow Diagram</h3></div>
+                      <button onClick={() => window.print()} className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition"><i className="fa-solid fa-print"></i><span>Print Flow Chart</span></button>
                     </div>
-
                     <div className="flex flex-col items-center py-6 overflow-x-auto">
                       <div className="min-w-[650px] space-y-6">
                         <div className="flex justify-center space-x-12">
-                          <div className="w-72 bg-blue-50 dark:bg-blue-950/20 border-2 border-blue-200 dark:border-blue-900 rounded-xl p-4 text-center">
-                            <span className="text-[9px] font-bold text-blue-500 uppercase block tracking-wider">Identification</span>
-                            <h4 className="text-3xl font-extrabold text-blue-700 dark:text-blue-400 mt-1">{metrics.total}</h4>
-                            <p className="text-[10px] text-slate-500 mt-1">Citations imported into the system</p>
-                          </div>
-                          <div className="w-72 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase block tracking-wider">Duplicate Removal</span>
-                            <h4 className="text-2xl font-extrabold text-slate-600 dark:text-slate-400 mt-1">0</h4>
-                            <p className="text-[10px] text-slate-500 mt-1">Auto-deduplicated before screening</p>
-                          </div>
+                          <div className="w-72 bg-blue-50 dark:bg-blue-950/20 border-2 border-blue-200 dark:border-blue-900 rounded-xl p-4 text-center"><span className="text-[9px] font-bold text-blue-500 uppercase block tracking-wider">Identification</span><h4 className="text-3xl font-extrabold text-blue-700 dark:text-blue-400 mt-1">{metrics.total}</h4></div>
+                          <div className="w-72 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center"><span className="text-[9px] font-bold text-slate-400 uppercase block tracking-wider">Duplicate Removal</span><h4 className="text-2xl font-extrabold text-slate-600 dark:text-slate-400 mt-1">0</h4></div>
                         </div>
-
                         <div className="flex justify-center"><i className="fa-solid fa-arrow-down-long text-slate-300 text-xl"></i></div>
-
                         <div className="flex justify-center space-x-12">
-                          <div className="w-72 bg-amber-50 dark:bg-amber-950/20 border-2 border-amber-200 dark:border-amber-900 rounded-xl p-4 text-center">
-                            <span className="text-[9px] font-bold text-amber-500 uppercase block tracking-wider">Abstract Screening</span>
-                            <h4 className="text-3xl font-extrabold text-amber-700 dark:text-amber-400 mt-1">
-                              {metrics.total - metrics.conflicts}
-                            </h4>
-                            <p className="text-[10px] text-slate-500 mt-1">Evaluated by dual reviewers</p>
-                          </div>
-                          <div className="w-72 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl p-4 text-center">
-                            <span className="text-[9px] font-bold text-red-500 uppercase block tracking-wider">Abstracts Excluded</span>
-                            <h4 className="text-2xl font-extrabold text-red-700 dark:text-red-400 mt-1">{metrics.excludedAbstract}</h4>
-                            <p className="text-[10px] text-slate-500 mt-1">Rejected by dual reviewers</p>
-                          </div>
+                          <div className="w-72 bg-amber-50 dark:bg-amber-950/20 border-2 border-amber-200 dark:border-amber-900 rounded-xl p-4 text-center"><span className="text-[9px] font-bold text-amber-500 uppercase block tracking-wider">Abstract Screening</span><h4 className="text-3xl font-extrabold text-amber-700 dark:text-amber-400 mt-1">{metrics.total - metrics.conflicts}</h4></div>
+                          <div className="w-72 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl p-4 text-center"><span className="text-[9px] font-bold text-red-500 uppercase block tracking-wider">Abstracts Excluded</span><h4 className="text-2xl font-extrabold text-red-700 dark:text-red-400 mt-1">{metrics.excludedAbstract}</h4></div>
                         </div>
-
                         <div className="flex justify-center"><i className="fa-solid fa-arrow-down-long text-slate-300 text-xl"></i></div>
-
                         <div className="flex justify-center space-x-12">
-                          <div className="w-72 bg-indigo-50 dark:bg-indigo-950/20 border-2 border-indigo-200 dark:border-indigo-900 rounded-xl p-4 text-center">
-                            <span className="text-[9px] font-bold text-indigo-500 uppercase block tracking-wider">Full-Text Assessment</span>
-                            <h4 className="text-3xl font-extrabold text-indigo-700 dark:text-indigo-400 mt-1">{metrics.retrieved}</h4>
-                            <p className="text-[10px] text-slate-500 mt-1">Full-text appraised for eligibility</p>
-                          </div>
-                          <div className="w-72 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl p-4 text-center">
-                            <span className="text-[9px] font-bold text-red-500 uppercase block tracking-wider">Full-Text Excluded</span>
-                            <h4 className="text-2xl font-extrabold text-red-700 dark:text-red-400 mt-1">
-                              {articles.filter(a => a.status === "Excluded_Eligibility").length}
-                            </h4>
-                            <p className="text-[10px] text-slate-500 mt-1">Failed methodological/population criteria</p>
-                          </div>
+                          <div className="w-72 bg-indigo-50 dark:bg-indigo-950/20 border-2 border-indigo-200 dark:border-indigo-900 rounded-xl p-4 text-center"><span className="text-[9px] font-bold text-indigo-500 uppercase block tracking-wider">Full-Text Assessment</span><h4 className="text-3xl font-extrabold text-indigo-700 dark:text-indigo-400 mt-1">{metrics.retrieved}</h4></div>
+                          <div className="w-72 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl p-4 text-center"><span className="text-[9px] font-bold text-red-500 uppercase block tracking-wider">Full-Text Excluded</span><h4 className="text-2xl font-extrabold text-red-700 dark:text-red-400 mt-1">{articles.filter(a => a.status === "Excluded_Eligibility").length}</h4></div>
                         </div>
-
                         <div className="flex justify-center"><i className="fa-solid fa-arrow-down-long text-slate-300 text-xl"></i></div>
-
-                        <div className="flex justify-center">
-                          <div className="w-96 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl p-6 text-center shadow-md">
-                            <span className="text-[10px] font-bold uppercase tracking-wider opacity-90">Included Literature Synthesis</span>
-                            <h4 className="text-4xl font-black my-1">{metrics.included}</h4>
-                            <p className="text-[11px] opacity-80">Publications selected for qualitative & qualitative meta-analysis</p>
-                          </div>
-                        </div>
+                        <div className="flex justify-center"><div className="w-96 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl p-6 text-center shadow-md"><span className="text-[10px] font-bold uppercase tracking-wider opacity-90">Included Literature Synthesis</span><h4 className="text-4xl font-black my-1">{metrics.included}</h4></div></div>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* TAB 6: PRISMA 2020 CHECKLIST INTEGRATION */}
+              {}
               {activeTab === "checklist" && (
                 <div className="space-y-6">
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
                     <h3 className="text-sm font-bold dark:text-white">PRISMA 2020 Compliance Checklist</h3>
-                    <p className="text-xs text-slate-500 font-medium">Draft compliant methodology sections directly inside our checklist generator.</p>
                   </div>
-
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-2">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Checklist Sections</span>
@@ -1555,59 +1038,24 @@
                           const state = checklistProgress[item.id] || { status: "Not Started", draft: "" };
                           return (
                             <div key={item.id} className="p-2 bg-slate-50 dark:bg-slate-855 rounded-lg text-xs flex justify-between items-center">
-                              <div>
-                                <div className="font-bold">{item.title}</div>
-                                <div className="text-[9px] text-slate-400">{item.section}</div>
-                              </div>
-                              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
-                                state.status === "Completed" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
-                              }`}>{state.status}</span>
+                              <div><div className="font-bold">{item.title}</div><div className="text-[9px] text-slate-400">{item.section}</div></div>
+                              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${state.status === "Completed" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>{state.status}</span>
                             </div>
                           );
                         })}
                       </div>
                     </div>
-
                     <div className="lg:col-span-2 space-y-4">
                       {PRISMA_CHECKLIST_ITEMS.map((item) => {
                         const state = checklistProgress[item.id] || { status: "Not Started", draft: "" };
                         return (
                           <div key={item.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm space-y-3">
                             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
-                              <div>
-                                <span className="text-[9px] text-blue-500 uppercase font-bold">{item.section}</span>
-                                <h4 className="text-xs font-bold">{item.title}</h4>
-                              </div>
-                              <select 
-                                value={state.status}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setChecklistProgress(prev => ({
-                                    ...prev,
-                                    [item.id]: { ...state, status: val }
-                                  }));
-                                }}
-                                className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 p-1 rounded"
-                              >
-                                <option value="Not Started">Not Started</option>
-                                <option value="In Progress">In Progress</option>
-                                <option value="Completed">Completed</option>
-                              </select>
+                              <div><span className="text-[9px] text-blue-500 uppercase font-bold">{item.section}</span><h4 className="text-xs font-bold">{item.title}</h4></div>
+                              <select value={state.status} onChange={(e) => setChecklistProgress(prev => ({ ...prev, [item.id]: { ...state, status: e.target.value } }))} className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 p-1 rounded"><option value="Not Started">Not Started</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option></select>
                             </div>
                             <p className="text-[10px] text-slate-500 italic">{item.recommendation}</p>
-                            <textarea 
-                              rows="3"
-                              value={state.draft}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setChecklistProgress(prev => ({
-                                  ...prev,
-                                  [item.id]: { ...state, draft: val }
-                                }));
-                              }}
-                              className="w-full text-xs p-2 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none dark:text-white"
-                              placeholder="Write draft details..."
-                            />
+                            <textarea rows="3" value={state.draft} onChange={(e) => setChecklistProgress(prev => ({ ...prev, [item.id]: { ...state, draft: e.target.value } }))} className="w-full text-xs p-2 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none dark:text-white" placeholder="Write draft details..." />
                           </div>
                         );
                       })}
