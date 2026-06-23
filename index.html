@@ -63,14 +63,19 @@
     // ==============================================================================
     // ☁️ FIREBASE CLOUD SYNC CONFIGURATION
     // ==============================================================================
-    const FIREBASE_CONFIG = {
-      apiKey: "AIzaSyDOtonMvhKkoYcq4tHR3DEmJenSpP4aYPw",
-      authDomain: "prism-c0399.firebaseapp.com",
-      projectId: "prism-c0399",
-      storageBucket: "prism-c0399.firebasestorage.app",
-      messagingSenderId: "418429283718",
-      appId: "1:418429283718:web:d3ad698927030cd15e9007",
-      measurementId: "G-VQCHMC3DP3"
+    // INSTRUCTIONS TO GO ONLINE:
+    // 1. Go to console.firebase.google.com and create a free project.
+    // 2. Add a "Web App" to the project to get your keys.
+    // 3. Replace the 'null' below with your actual configuration object.
+    
+    const firebaseConfig = {
+    apiKey: "AIzaSyDOtonMvhKkoYcq4tHR3DEmJenSpP4aYPw",
+    authDomain: "prism-c0399.firebaseapp.com",
+    projectId: "prism-c0399",
+    storageBucket: "prism-c0399.firebasestorage.app",
+    messagingSenderId: "418429283718",
+    appId: "1:418429283718:web:d3ad698927030cd15e9007",
+    measurementId: "G-VQCHMC3DP3"
     };
     // ==============================================================================
 
@@ -109,13 +114,7 @@
       const [searchError, setSearchError] = useState("");
 
       const [rawIngestText, setRawIngestText] = useState("");
-      
-      // Auto-assign Reviewer role based on the invite URL
-      const [currentReviewer, setCurrentReviewer] = useState(() => {
-        const params = new URLSearchParams(window.location.search);
-        return params.get('role') === 'reviewerB' ? 'reviewerB' : 'reviewerA';
-      }); 
-      
+      const [currentReviewer, setCurrentReviewer] = useState("reviewerA"); 
       const [picoKeywords, setPicoKeywords] = useState("");
 
       const [checklistProgress, setChecklistProgress] = useState({
@@ -131,24 +130,14 @@
       const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
 
       // Cloud State
-      const [cloudStatus, setCloudStatus] = useState("disconnected"); 
+      const [cloudStatus, setCloudStatus] = useState("disconnected"); // connecting, connected, error, disconnected
       const lastSyncedState = useRef("");
       const cloudSetupDone = useRef(false);
-      const isInitialLoad = useRef(true);
-      const [workspaceId, setWorkspaceId] = useState("");
 
       const triggerToast = (msg, type = "success") => {
         setToast({ show: true, msg, type });
         setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 4000);
       };
-
-      // Toast notification when joining via an invite link
-      useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('role') === 'reviewerB') {
-          setTimeout(() => triggerToast("Joined workspace as Reviewer 2 (Beta)!", "success"), 1000);
-        }
-      }, []);
 
       useEffect(() => {
         if (cloudSetupDone.current) return;
@@ -159,11 +148,12 @@
           try {
             setCloudStatus("connecting");
             
-            if (!FIREBASE_CONFIG || !FIREBASE_CONFIG.apiKey) {
+            if (!FIREBASE_CONFIG) {
               setCloudStatus("disconnected");
-              return; 
+              return; // Running locally without keys, fallback to offline
             }
             
+            // Dynamically import Firebase libraries
             const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
             const { getAuth, signInAnonymously } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
             const { getFirestore, doc, setDoc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
@@ -172,6 +162,7 @@
             const auth = getAuth(app);
             const db = getFirestore(app);
 
+            // Sign in anonymously to secure the database
             await signInAnonymously(auth);
 
             if (!auth.currentUser) {
@@ -183,31 +174,29 @@
             window._db = db;
             window._setDoc = setDoc;
             
+            // CRITICAL: Manage Workspace Session ID in URL Hash for sharing
             let wid = window.location.hash.substring(1);
-            if (!wid) { 
-              wid = Math.random().toString(36).substring(2, 12); 
-              try {
-                window.history.replaceState(null, null, `${window.location.pathname}${window.location.search}#${wid}`); 
-              } catch (e) {
-                try {
-                  window.location.hash = wid;
-                } catch (err) {
-                  console.warn("Sandbox environment prevented URL update.");
-                }
-              }
+            if (!wid) {
+              wid = Math.random().toString(36).substring(2, 12);
+              window.location.hash = wid; // Updates URL so it can be copied
             }
-            setWorkspaceId(wid);
 
+            // Reference to this exact collaborative workspace
             const docRef = doc(db, 'workspaces', wid);
             window._docRef = docRef;
 
+            // Start real-time inbound listener (When Reviewer Beta votes, update Reviewer Alpha's screen)
             unsubscribe = onSnapshot(docRef, (snapshot) => {
               if (snapshot.exists()) {
                 const data = snapshot.data();
+                
                 const defaultChecklist = {
-                  "item-1": { status: "Not Started", draft: "" }, "item-2": { status: "Not Started", draft: "" },
-                  "item-3": { status: "Not Started", draft: "" }, "item-4": { status: "Not Started", draft: "" },
-                  "item-5": { status: "Not Started", draft: "" }, "item-6": { status: "Not Started", draft: "" }
+                  "item-1": { status: "Not Started", draft: "" },
+                  "item-2": { status: "Not Started", draft: "" },
+                  "item-3": { status: "Not Started", draft: "" },
+                  "item-4": { status: "Not Started", draft: "" },
+                  "item-5": { status: "Not Started", draft: "" },
+                  "item-6": { status: "Not Started", draft: "" }
                 };
 
                 const safeData = {
@@ -217,17 +206,16 @@
                 };
                 
                 const dataStr = JSON.stringify(safeData);
+                
+                // Only update if the cloud data is actually different to prevent loops
                 if (dataStr !== lastSyncedState.current) {
                   lastSyncedState.current = dataStr;
                   setArticles(safeData.articles);
                   setReviewTitle(safeData.reviewTitle);
                   setChecklistProgress(safeData.checklistProgress);
                 }
-              } else {
-                lastSyncedState.current = JSON.stringify({ articles, reviewTitle, checklistProgress });
               }
               setCloudStatus("connected");
-              isInitialLoad.current = false;
             }, (error) => {
               console.error("Sync error:", error);
               setCloudStatus("error");
@@ -244,20 +232,22 @@
       }, []);
 
       useEffect(() => {
-        if (cloudStatus !== "connected" || !window._setDoc || !window._docRef || isInitialLoad.current) return;
+        if (cloudStatus !== "connected" || !window._setDoc || !window._docRef) return;
         
         const currentData = { articles, reviewTitle, checklistProgress };
         const currentStr = JSON.stringify(currentData);
         
+        // If local state changed, push it to the cloud database
         if (currentStr !== lastSyncedState.current) {
           lastSyncedState.current = currentStr;
+          
           const timeout = setTimeout(async () => {
             try {
               await window._setDoc(window._docRef, { ...currentData, lastUpdated: Date.now() }, { merge: true });
             } catch (err) {
               console.error("Failed to push updates:", err);
             }
-          }, 800); 
+          }, 800); // 800ms debounce to prevent spamming the database
           return () => clearTimeout(timeout);
         }
       }, [articles, reviewTitle, checklistProgress, cloudStatus]);
@@ -269,11 +259,9 @@
       };
 
       const copyShareLink = () => {
-        // Embeds ?role=reviewerB directly into the link they copy
-        const fullUrl = `${window.location.origin}${window.location.pathname}?role=reviewerB#${workspaceId}`;
-        
+        const fullUrl = window.location.href;
         navigator.clipboard.writeText(fullUrl).then(() => {
-          triggerToast("Invite link copied! Send it to your co-reviewer.", "success");
+          triggerToast("Collab link copied! Send it to your co-reviewer.", "success");
         }).catch(() => {
           const dummy = document.createElement('input');
           document.body.appendChild(dummy);
@@ -281,7 +269,7 @@
           dummy.select();
           document.execCommand('copy');
           document.body.removeChild(dummy);
-          triggerToast("Invite link copied! Send it to your co-reviewer.", "success");
+          triggerToast("Collab link copied! Send it to your co-reviewer.", "success");
         });
       };
 
@@ -312,6 +300,7 @@
                 authors: parsedAuthors || "Unknown Investigators",
                 journal: work.primary_location?.source?.display_name || "Academic Proceeding",
                 abstract: work.abstract_inverted_index ? reconstructAbstract(work.abstract_inverted_index) : "No abstract description indexed.",
+                url: work.doi || work.primary_location?.landing_page_url || work.id,
                 status: "Identified", source: "OpenAlex", notes: "",
                 reviewerVotes: { reviewerA: null, reviewerB: null },
                 rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" }
@@ -325,12 +314,17 @@
 
             mapped = (data.message?.items || []).map(item => {
               const parsedAuthors = item.author?.slice(0, 3).map(a => `${a.given || ""} ${a.family || ""}`).join(", ") || "Unknown Investigators";
+              
+              let parsedAbstract = "Abstract meta-tag not accessible via fast CrossRef API indexing.";
+              if (item.abstract) parsedAbstract = item.abstract.replace(/(<([^>]+)>)/gi, "");
+
               return {
                 id: item.DOI || `cr-${Math.random().toString(36).substr(2, 9)}`,
                 title: item.title?.[0] || "Untitled CrossRef Registry",
                 authors: parsedAuthors,
                 journal: item["container-title"]?.[0] || "CrossRef DOI Publisher",
-                abstract: "Abstract meta-tag not accessible via fast CrossRef API indexing.",
+                abstract: parsedAbstract,
+                url: item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : null),
                 status: "Identified", source: "CrossRef", notes: "",
                 reviewerVotes: { reviewerA: null, reviewerB: null },
                 rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" }
@@ -350,11 +344,13 @@
 
       const reconstructAbstract = (invertedIndex) => {
         try {
-          const words = [];
+          if (!invertedIndex) return "No abstract description indexed.";
+          const maxIndex = Math.max(...Object.values(invertedIndex).flat());
+          const words = new Array(maxIndex + 1).fill("");
           Object.entries(invertedIndex).forEach(([word, positions]) => {
             positions.forEach(pos => { words[pos] = word; });
           });
-          return words.join(" ");
+          return words.join(" ").trim().replace(/\s+/g, ' ');
         } catch (e) { return "Abstract extraction error."; }
       };
 
@@ -374,7 +370,7 @@
         let importedCount = 0;
         
         if (rawIngestText.includes("TY  -") || rawIngestText.includes("ER  -")) {
-          let currentPaper = { id: "", title: "", authors: "", journal: "", abstract: "", status: "Identified", source: "Local Import", reviewerVotes: { reviewerA: null, reviewerB: null }, rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" } };
+          let currentPaper = { id: "", title: "", authors: "", journal: "", abstract: "", url: "", status: "Identified", source: "Local Import", reviewerVotes: { reviewerA: null, reviewerB: null }, rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" } };
           lines.forEach(line => {
             const match = line.match(/^([A-Z0-9]{2})\s*-\s*(.*)$/);
             if (match) {
@@ -383,6 +379,8 @@
               else if (tag === "AU") currentPaper.authors += (currentPaper.authors ? ", " : "") + val;
               else if (tag === "JO" || tag === "JF") currentPaper.journal = val;
               else if (tag === "AB" || tag === "N2") currentPaper.abstract = val;
+              else if (tag === "UR" || tag === "L8") currentPaper.url = val;
+              else if (tag === "DO") currentPaper.url = `https://doi.org/${val}`;
               else if (tag === "PY") currentPaper.authors += ` (${val})`;
             }
             if (line.trim() === "ER  -") {
@@ -391,20 +389,24 @@
                 setArticles(prev => [currentPaper, ...prev]);
                 importedCount++;
               }
-              currentPaper = { id: "", title: "", authors: "", journal: "", abstract: "", status: "Identified", source: "Local Import", reviewerVotes: { reviewerA: null, reviewerB: null }, rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" } };
+              currentPaper = { id: "", title: "", authors: "", journal: "", abstract: "", url: "", status: "Identified", source: "Local Import", reviewerVotes: { reviewerA: null, reviewerB: null }, rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" } };
             }
           });
         } else if (rawIngestText.includes("@article") || rawIngestText.includes("@inproceedings") || rawIngestText.includes("@book")) {
-          const titleMatch = rawIngestText.match(/title\s*=\s*[{"]([^}"]+)[}"]/i);
-          const authorMatch = rawIngestText.match(/author\s*=\s*[{"]([^}"]+)[}"]/i);
-          const journalMatch = rawIngestText.match(/journal\s*=\s*[{"]([^}"]+)[}"]/i);
-          const abstractMatch = rawIngestText.match(/abstract\s*=\s*[{"]([^}"]+)[}"]/i);
+          const titleMatch = rawIngestText.match(/title\s*=\s*[{"]([\s\S]*?)[}"]/i);
+          const authorMatch = rawIngestText.match(/author\s*=\s*[{"]([\s\S]*?)[}"]/i);
+          const journalMatch = rawIngestText.match(/journal\s*=\s*[{"]([\s\S]*?)[}"]/i);
+          const abstractMatch = rawIngestText.match(/abstract\s*=\s*[{"]([\s\S]*?)[}"]/i);
+          const urlMatch = rawIngestText.match(/url\s*=\s*[{"]([\s\S]*?)[}"]/i);
+          const doiMatch = rawIngestText.match(/doi\s*=\s*[{"]([\s\S]*?)[}"]/i);
+
           if (titleMatch) {
             setArticles(prev => [{
-              id: `bib-${Date.now()}`, title: titleMatch[1],
-              authors: authorMatch ? authorMatch[1] : "Unknown Authors",
-              journal: journalMatch ? journalMatch[1] : "Indexed Monograph",
-              abstract: abstractMatch ? abstractMatch[1] : "No abstract parsed in bibTeX block.",
+              id: `bib-${Date.now()}`, title: titleMatch[1].replace(/\n/g, ' '),
+              authors: authorMatch ? authorMatch[1].replace(/\n/g, ' ') : "Unknown Authors",
+              journal: journalMatch ? journalMatch[1].replace(/\n/g, ' ') : "Indexed Monograph",
+              abstract: abstractMatch ? abstractMatch[1].replace(/\n/g, ' ') : "No abstract parsed in bibTeX block.",
+              url: urlMatch ? urlMatch[1] : (doiMatch ? `https://doi.org/${doiMatch[1]}` : ""),
               status: "Identified", source: "Local Import",
               reviewerVotes: { reviewerA: null, reviewerB: null },
               rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" }
@@ -547,8 +549,12 @@
                 </div>
                 <button 
                   onClick={copyShareLink}
-                  title="Copy Live Session Link"
-                  className="px-3 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center space-x-1.5 transition bg-blue-600/20 hover:bg-blue-600/40 text-blue-400"
+                  title={cloudStatus === "disconnected" ? "Add Firebase Keys in code to enable sharing" : "Copy Live Session Link"}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center space-x-1.5 transition ${
+                    cloudStatus === "disconnected" 
+                    ? "bg-slate-800 text-slate-500 cursor-help" 
+                    : "bg-blue-600/20 hover:bg-blue-600/40 text-blue-400"
+                  }`}
                 >
                   <i className="fa-solid fa-link"></i>
                   <span>Invite Co-Reviewer</span>
@@ -578,6 +584,7 @@
           </header>
 
           <div className="flex-1 flex overflow-hidden">
+            {}
             <aside className="no-print w-60 bg-slate-900 border-r border-slate-800 hidden md:flex flex-col justify-between py-6 flex-shrink-0">
               <nav className="space-y-1 px-3">
                 <button 
@@ -643,7 +650,7 @@
 
             <main className="flex-1 overflow-y-auto pb-16 md:pb-6 p-4 md:p-8 bg-slate-100 dark:bg-slate-900 transition-colors duration-150">
               
-              {/* TUTORIAL TAB */}
+              {}
               {activeTab === "tutorial" && (
                 <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
                   <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 text-white rounded-2xl p-8 shadow-lg flex justify-between items-center relative overflow-hidden">
@@ -723,7 +730,7 @@
                 </div>
               )}
 
-              {/* API SEARCH TAB */}
+              {}
               {activeTab === "api-search" && (
                 <div className="space-y-6">
                   <div className="bg-gradient-to-r from-blue-700 to-indigo-800 text-white rounded-2xl p-6 shadow-md flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -784,7 +791,16 @@
                             return (
                               <div key={paper.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 hover:border-blue-400 dark:hover:border-blue-500 transition-all-200">
                                 <div className="flex justify-between items-start gap-4">
-                                  <div className="space-y-1"><h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-snug">{paper.title}</h3><p className="text-[10px] text-slate-400 font-semibold">{paper.authors} • <span className="italic text-slate-500">{paper.journal}</span></p></div>
+                                  <div className="space-y-1">
+                                    <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                                      {paper.url ? (
+                                        <a href={paper.url} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline inline-flex items-center gap-1 transition">
+                                          {paper.title} <i className="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-70"></i>
+                                        </a>
+                                      ) : paper.title}
+                                    </h3>
+                                    <p className="text-[10px] text-slate-400 font-semibold">{paper.authors} • <span className="italic text-slate-500">{paper.journal}</span></p>
+                                  </div>
                                   <button onClick={() => importToScreening(paper)} disabled={isAlreadyImported} className={`px-3 py-1.5 text-[10px] font-extrabold rounded-lg flex items-center space-x-1 transition flex-shrink-0 ${isAlreadyImported ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 cursor-not-allowed" : "bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white"}`}>
                                     {isAlreadyImported ? <><i className="fa-solid fa-circle-check"></i><span>In Review</span></> : <><i className="fa-solid fa-plus"></i><span>Import Draft</span></>}
                                   </button>
@@ -800,61 +816,24 @@
                 </div>
               )}
 
-              {/* CUSTOM IMPORT TAB */}
+              {}
               {activeTab === "custom-import" && (
                 <div className="space-y-6">
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-                    <div className="flex items-center space-x-2.5 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center space-x-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
                       <div className="h-8 w-8 bg-blue-100 dark:bg-slate-800 text-blue-600 rounded-lg flex items-center justify-center"><i className="fa-solid fa-file-invoice"></i></div>
-                      <div>
-                        <h3 className="text-sm font-bold dark:text-white">Bibliography Raw Ingest</h3>
-                        <p className="text-xs text-slate-500">Paste standard .ris or BibTeX entries directly in the block below.</p>
-                      </div>
+                      <div><h3 className="text-sm font-bold dark:text-white">Bibliography Raw Ingest</h3><p className="text-xs text-slate-500">Paste standard .ris or BibTeX entries directly in the block below.</p></div>
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Expected Format Example</label>
-                        <div className="p-4 bg-slate-800 text-emerald-400 text-[10px] sm:text-xs font-mono rounded-xl overflow-x-auto h-[320px] select-all whitespace-pre leading-relaxed border border-slate-700 shadow-inner">
-{`TY  - JOUR
-TI  - The role of AI in systematic reviews
-AU  - Setiawan, Tery
-AU  - Doe, Jane
-JO  - Journal of Medical Syntax
-PY  - 2024
-AB  - This study demonstrates the use of PRISMA...
-ER  - 
-
-@article{setiawan2024,
-  title={The role of AI in systematic reviews},
-  author={Setiawan, Tery and Doe, Jane},
-  journal={Medical Syntax},
-  year={2024},
-  abstract={This study demonstrates the use...}
-}`}
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Paste your Raw Code here</label>
-                        <textarea 
-                          value={rawIngestText} 
-                          onChange={(e) => setRawIngestText(e.target.value)} 
-                          className="w-full h-[320px] text-[10px] sm:text-xs font-mono p-4 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:ring-1 focus:ring-blue-500 focus:outline-none leading-relaxed shadow-inner" 
-                          placeholder="Paste your RIS or BibTeX entries here..." 
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Raw Code block</label>
+                      <textarea rows="8" value={rawIngestText} onChange={(e) => setRawIngestText(e.target.value)} className="w-full text-xs font-mono p-4 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:ring-1 focus:ring-blue-500 focus:outline-none" placeholder="RIS or BibTeX Example Text..." />
                     </div>
-                    
-                    <div className="pt-2 flex justify-end">
-                      <button onClick={handleRawIngest} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5">
-                        <i className="fa-solid fa-microchip"></i><span>Ingest Citations</span>
-                      </button>
-                    </div>
+                    <div className="pt-2 flex justify-end"><button onClick={handleRawIngest} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5"><i className="fa-solid fa-microchip"></i><span>Ingest Citations</span></button></div>
                   </div>
                 </div>
               )}
 
-              {/* SCREENING TAB */}
+              {}
               {activeTab === "screening" && (
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-[calc(100vh-180px)] overflow-hidden">
                   <div className="xl:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden shadow-sm">
@@ -924,7 +903,15 @@ ER  -
                           <div className="p-6 overflow-y-auto space-y-5 flex-1">
                             <div className="border-b border-slate-100 dark:border-slate-800 pb-4 space-y-2">
                               <div className="flex items-center space-x-2 text-xs text-slate-400"><span className="bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded font-bold text-[9px] uppercase">{active.source}</span><span>•</span><span>{active.journal}</span></div>
-                              <h3 className="text-sm font-extrabold text-slate-950 dark:text-white leading-snug">{active.title}</h3>
+                              <h3 className="text-sm font-extrabold text-slate-950 dark:text-white leading-snug">
+                                {active.url ? (
+                                  <a href={active.url} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline inline-flex items-center gap-1.5 transition">
+                                    {active.title} <i className="fa-solid fa-arrow-up-right-from-square text-[10px] opacity-70"></i>
+                                  </a>
+                                ) : (
+                                  active.title
+                                )}
+                              </h3>
                               <p className="text-[10px] text-slate-400 font-semibold">By: <span className="font-normal text-slate-500">{active.authors}</span></p>
                             </div>
                             <div className="p-3 bg-blue-50/50 dark:bg-slate-80/40 rounded-xl border border-slate-200/50 dark:border-slate-700/50 space-y-1.5">
@@ -975,7 +962,7 @@ ER  -
                 </div>
               )}
 
-              {/* ROB TAB */}
+              {}
               {activeTab === "rob" && (
                 <div className="space-y-6">
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-2">
@@ -1036,7 +1023,7 @@ ER  -
                 </div>
               )}
 
-              {/* FLOWCHART TAB */}
+              {}
               {activeTab === "flowchart" && (
                 <div className="space-y-6">
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
@@ -1068,7 +1055,7 @@ ER  -
                 </div>
               )}
 
-              {/* CHECKLIST TAB */}
+              {}
               {activeTab === "checklist" && (
                 <div className="space-y-6">
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
