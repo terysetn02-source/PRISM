@@ -35,6 +35,7 @@
     .dark .highlight-match { background-color: #854d0e; color: #fef08a; }
     @media print {
       .no-print { display: none !important; }
+      .print-full-width { width: 100% !important; max-width: 100% !important; }
       body { background-color: white !important; color: black !important; }
     }
     .animate-fade-in { animation: fadeIn 0.3s ease-out; }
@@ -97,6 +98,11 @@
       { id: "item-6", section: "Methods", title: "Information Sources", recommendation: "Detail all databases, dates of search, and registry systems queried." }
     ];
 
+    const DEFAULT_REVIEWER_VOTES = {
+      reviewerA: null, reviewerB: null, reviewerC: null, reviewerD: null, reviewerE: null,
+      reviewerF: null, reviewerG: null, reviewerH: null, reviewerI: null, reviewerJ: null
+    };
+
     function App() {
       const [activeTab, setActiveTab] = useState("tutorial"); 
       const [darkMode, setDarkMode] = useState(false);
@@ -106,20 +112,36 @@
       const [selectedArtId, setSelectedArtId] = useState("");
       const [screeningFilter, setScreeningFilter] = useState("All");
 
+      // Dynamic Reviewers setup supporting up to 10 reviewers
+      const [reviewerCount, setReviewerCount] = useState(2); 
+      const [currentReviewer, setCurrentReviewer] = useState("reviewerA"); 
+
       const [searchEngine, setSearchEngine] = useState("openalex"); 
       const [searchQuery, setSearchQuery] = useState("");
+      const [searchLimit, setSearchLimit] = useState(50); 
       const [searchLoading, setSearchLoading] = useState(false);
       const [searchResults, setSearchResults] = useState([]);
       const [searchError, setSearchError] = useState("");
       const [searchHistory, setSearchHistory] = useState([]);
 
+      // Advanced Filters
+      const [filtersOpen, setFiltersOpen] = useState(false);
+      const [filterStartYear, setFilterStartYear] = useState("");
+      const [filterEndYear, setFilterEndYear] = useState("");
+      const [filterCountry, setFilterCountry] = useState("");
+      const [filterResourceType, setFilterResourceType] = useState("all"); 
+      const [filterOpenAccess, setFilterOpenAccess] = useState("all"); 
+
+      // Ingestion Modes
+      const [importTab, setImportTab] = useState("manual"); 
       const [rawIngestText, setRawIngestText] = useState("");
       
-      // Auto-assign Reviewer role based on the invite URL
-      const [currentReviewer, setCurrentReviewer] = useState(() => {
-        const params = new URLSearchParams(window.location.search);
-        return params.get('role') === 'reviewerB' ? 'reviewerB' : 'reviewerA';
-      }); 
+      // Manual Ingest Fields
+      const [manualTitle, setManualTitle] = useState("");
+      const [manualUrl, setManualUrl] = useState("");
+      const [manualAuthors, setManualAuthors] = useState("");
+      const [manualJournal, setManualJournal] = useState("");
+      const [manualAbstract, setManualAbstract] = useState("");
       
       const [picoKeywords, setPicoKeywords] = useState("");
 
@@ -147,11 +169,14 @@
         setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 4000);
       };
 
-      // Toast notification when joining via an invite link
+      // Detect Reviewer role from Invite URL query parameters
       useEffect(() => {
         const params = new URLSearchParams(window.location.search);
-        if (params.get('role') === 'reviewerB') {
-          setTimeout(() => triggerToast("Joined workspace as Reviewer 2 (Beta)!", "success"), 1000);
+        const role = params.get('role');
+        if (role && role.startsWith('reviewer')) {
+          setCurrentReviewer(role);
+          const reviewerNum = role.charCodeAt(8) - 64; // A -> 1, B -> 2, etc.
+          setTimeout(() => triggerToast(`Joined workspace session as Reviewer ${reviewerNum}!`, "success"), 1000);
         }
       }, []);
 
@@ -223,7 +248,8 @@
                   articles: data.articles || [],
                   reviewTitle: data.reviewTitle || "",
                   checklistProgress: data.checklistProgress || defaultChecklist,
-                  searchHistory: data.searchHistory || []
+                  searchHistory: data.searchHistory || [],
+                  reviewerCount: data.reviewerCount || 2
                 };
                 
                 const dataStr = JSON.stringify(safeData);
@@ -233,9 +259,10 @@
                   setReviewTitle(safeData.reviewTitle);
                   setChecklistProgress(safeData.checklistProgress);
                   setSearchHistory(safeData.searchHistory);
+                  setReviewerCount(safeData.reviewerCount);
                 }
               } else {
-                lastSyncedState.current = JSON.stringify({ articles, reviewTitle, checklistProgress, searchHistory });
+                lastSyncedState.current = JSON.stringify({ articles, reviewTitle, checklistProgress, searchHistory, reviewerCount });
               }
               setCloudStatus("connected");
               isInitialLoad.current = false;
@@ -257,7 +284,7 @@
       useEffect(() => {
         if (cloudStatus !== "connected" || !window._setDoc || !window._docRef || isInitialLoad.current) return;
         
-        const currentData = { articles, reviewTitle, checklistProgress, searchHistory };
+        const currentData = { articles, reviewTitle, checklistProgress, searchHistory, reviewerCount };
         const currentStr = JSON.stringify(currentData);
         
         if (currentStr !== lastSyncedState.current) {
@@ -271,7 +298,7 @@
           }, 800); 
           return () => clearTimeout(timeout);
         }
-      }, [articles, reviewTitle, checklistProgress, searchHistory, cloudStatus]);
+      }, [articles, reviewTitle, checklistProgress, searchHistory, reviewerCount, cloudStatus]);
 
       const toggleDarkMode = () => {
         setDarkMode(!darkMode);
@@ -280,11 +307,10 @@
       };
 
       const copyShareLink = () => {
-        // Embeds ?role=reviewerB directly into the link they copy
-        const fullUrl = `${window.location.origin}${window.location.pathname}?role=reviewerB#${workspaceId}`;
+        const fullUrl = `${window.location.origin}${window.location.pathname}#${workspaceId}`;
         
         navigator.clipboard.writeText(fullUrl).then(() => {
-          triggerToast("Invite link copied! Send it to your co-reviewer.", "success");
+          triggerToast("Workspace session link copied! Share it with your team.", "success");
         }).catch(() => {
           const dummy = document.createElement('input');
           document.body.appendChild(dummy);
@@ -292,7 +318,7 @@
           dummy.select();
           document.execCommand('copy');
           document.body.removeChild(dummy);
-          triggerToast("Invite link copied! Send it to your co-reviewer.", "success");
+          triggerToast("Workspace session link copied! Share it with your team.", "success");
         });
       };
 
@@ -306,49 +332,164 @@
         setSearchResults([]);
 
         try {
-          let endpoint = "";
           let mapped = [];
 
           if (searchEngine === "openalex") {
-            endpoint = `https://api.openalex.org/works?search=${encodeURIComponent(searchQuery)}&per-page=50&mailto=your-workspace@prismaflow.org`;
+            let filterParts = [];
+            if (filterStartYear || filterEndYear) {
+              if (filterStartYear === filterEndYear && filterStartYear) {
+                filterParts.push(`publication_year:${filterStartYear}`);
+              } else {
+                if (filterStartYear) filterParts.push(`from_publication_date:${filterStartYear}-01-01`);
+                if (filterEndYear) filterParts.push(`to_publication_date:${filterEndYear}-12-31`);
+              }
+            }
+            if (filterResourceType === "journals") {
+              filterParts.push("type:article");
+            } else if (filterResourceType === "books") {
+              filterParts.push("type:book");
+            }
+            if (filterOpenAccess === "oa") {
+              filterParts.push("is_oa:true");
+            }
+            if (filterCountry) {
+              filterParts.push(`institutions.country_code:${filterCountry.toLowerCase()}`);
+            }
+
+            let endpoint = `https://api.openalex.org/works?search=${encodeURIComponent(searchQuery)}&per-page=${searchLimit}&mailto=your-workspace@prismaflow.org`;
+            if (filterParts.length > 0) {
+              endpoint += `&filter=${encodeURIComponent(filterParts.join(","))}`;
+            }
+
             const res = await fetch(endpoint);
             if (!res.ok) throw new Error(`OpenAlex HTTP Error: ${res.status}`);
             const data = await res.json();
             
             mapped = data.results.map(work => {
               const parsedAuthors = work.authorships?.slice(0, 3).map(a => a.author?.display_name).join(", ") + (work.authorships?.length > 3 ? " et al." : "");
+              const pubYear = work.publication_year ? ` (${work.publication_year})` : "";
               return {
                 id: work.id || `oa-${Math.random().toString(36).substr(2, 9)}`,
                 title: work.title || "Untitled Literature",
                 url: work.doi || work.id || "",
-                authors: parsedAuthors || "Unknown Investigators",
+                authors: (parsedAuthors || "Unknown Investigators") + pubYear,
                 journal: work.primary_location?.source?.display_name || "Academic Proceeding",
                 abstract: work.abstract_inverted_index ? reconstructAbstract(work.abstract_inverted_index) : "No abstract description indexed.",
                 status: "Identified", source: "OpenAlex", notes: "",
-                reviewerVotes: { reviewerA: null, reviewerB: null },
+                reviewerVotes: { ...DEFAULT_REVIEWER_VOTES },
                 rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" }
               };
             });
+          } else if (searchEngine === "pubmed") {
+            let term = searchQuery;
+            if (filterStartYear || filterEndYear) {
+              const start = filterStartYear || "1800";
+              const end = filterEndYear || new Date().getFullYear();
+              term += ` AND ${start}:${end}[dp]`;
+            }
+            if (filterResourceType === "journals") {
+              term += ` AND journal article[pt]`;
+            } else if (filterResourceType === "books") {
+              term += ` AND book[pt]`;
+            }
+            if (filterOpenAccess === "oa") {
+              term += ` AND free full text[sb]`;
+            }
+            if (filterCountry) {
+              term += ` AND ${filterCountry}[affil]`;
+            }
+
+            const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(term)}&retmode=json&retmax=${searchLimit}`;
+            const searchRes = await fetch(searchUrl);
+            if (!searchRes.ok) throw new Error(`PubMed Search HTTP Error: ${searchRes.status}`);
+            const searchData = await searchRes.json();
+            const idList = searchData.esearchresult.idlist;
+            
+            if (idList && idList.length > 0) {
+              const summaryUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${idList.join(',')}&retmode=json`;
+              const summaryRes = await fetch(summaryUrl);
+              if (!summaryRes.ok) throw new Error(`PubMed Summary HTTP Error: ${summaryRes.status}`);
+              const summaryData = await summaryRes.json();
+
+              let abstractMap = {};
+              try {
+                const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${idList.join(',')}&retmode=xml&rettype=abstract`;
+                const fetchRes = await fetch(fetchUrl);
+                if (fetchRes.ok) {
+                  const xmlText = await fetchRes.text();
+                  const parser = new DOMParser();
+                  const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                  const articlesXml = xmlDoc.getElementsByTagName("PubmedArticle");
+                  for (let i = 0; i < articlesXml.length; i++) {
+                    const art = articlesXml[i];
+                    const pmid = art.getElementsByTagName("PMID")[0]?.textContent;
+                    const absNodes = art.getElementsByTagName("AbstractText");
+                    let absParts = [];
+                    for (let j = 0; j < absNodes.length; j++) {
+                      const label = absNodes[j].getAttribute("Label");
+                      const text = absNodes[j].textContent;
+                      if (label) absParts.push(`${label}: ${text}`);
+                      else absParts.push(text);
+                    }
+                    if (pmid) {
+                      abstractMap[pmid] = absParts.join("\n") || "No abstract description indexed.";
+                    }
+                  }
+                }
+              } catch (xmlErr) {
+                console.warn("Could not pull detailed abstracts from PubMed efetch:", xmlErr);
+              }
+
+              mapped = idList.map(id => {
+                const doc = summaryData.result[id];
+                if (!doc) return null;
+                const authorNames = doc.authors?.map(a => a.name).join(", ") || "Unknown Investigators";
+                const pubYear = doc.pubdate ? doc.pubdate.split(' ')[0] : "";
+                return {
+                  id: `pmid-${id}`,
+                  title: doc.title || "Untitled PubMed Literature",
+                  url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`,
+                  authors: pubYear ? `${authorNames} (${pubYear})` : authorNames,
+                  journal: doc.source || "NLM Indexed Literature",
+                  abstract: abstractMap[id] || "No abstract meta-tag indexed or accessible via fast summary.",
+                  status: "Identified", source: "PubMed", notes: "",
+                  reviewerVotes: { ...DEFAULT_REVIEWER_VOTES },
+                  rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" }
+                };
+              }).filter(Boolean);
+            }
           } else if (searchEngine === "crossref") {
-            endpoint = `https://api.crossref.org/works?query=${encodeURIComponent(searchQuery)}&rows=50`;
+            let endpoint = `https://api.crossref.org/works?query=${encodeURIComponent(searchQuery)}&rows=${searchLimit}`;
             const res = await fetch(endpoint);
             if (!res.ok) throw new Error(`CrossRef HTTP Error: ${res.status}`);
             const data = await res.json();
 
             mapped = (data.message?.items || []).map(item => {
               const parsedAuthors = item.author?.slice(0, 3).map(a => `${a.given || ""} ${a.family || ""}`).join(", ") || "Unknown Investigators";
+              const pubYear = item.issued?.["date-parts"]?.[0]?.[0] ? ` (${item.issued["date-parts"][0][0]})` : "";
               return {
                 id: item.DOI || `cr-${Math.random().toString(36).substr(2, 9)}`,
                 title: item.title?.[0] || "Untitled CrossRef Registry",
                 url: item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : ""),
-                authors: parsedAuthors,
+                authors: parsedAuthors + pubYear,
                 journal: item["container-title"]?.[0] || "CrossRef DOI Publisher",
                 abstract: "Abstract meta-tag not accessible via fast CrossRef API indexing.",
                 status: "Identified", source: "CrossRef", notes: "",
-                reviewerVotes: { reviewerA: null, reviewerB: null },
+                reviewerVotes: { ...DEFAULT_REVIEWER_VOTES },
                 rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" }
               };
             });
+
+            if (filterStartYear || filterEndYear) {
+              mapped = mapped.filter(item => {
+                const match = item.authors.match(/\((\d{4})\)/);
+                if (!match) return true;
+                const year = parseInt(match[1]);
+                if (filterStartYear && year < parseInt(filterStartYear)) return false;
+                if (filterEndYear && year > parseInt(filterEndYear)) return false;
+                return true;
+              });
+            }
           }
 
           setSearchResults(mapped);
@@ -385,13 +526,75 @@
         triggerToast("Imported successfully to Abstract Screening!", "success");
       };
 
+      const downloadSearchResultsCSV = () => {
+        if (searchResults.length === 0) {
+          triggerToast("No search results to download.", "warning");
+          return;
+        }
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "ID,Title,URL,Authors,Journal,Abstract,Source\n";
+        searchResults.forEach(paper => {
+          const title = (paper.title || "").replace(/"/g, '""');
+          const url = (paper.url || "").replace(/"/g, '""');
+          const authors = (paper.authors || "").replace(/"/g, '""');
+          const journal = (paper.journal || "").replace(/"/g, '""');
+          const abstract = (paper.abstract || "").replace(/"/g, '""');
+          const source = (paper.source || "").replace(/"/g, '""');
+          csvContent += `"${paper.id}","${title}","${url}","${authors}","${journal}","${abstract}","${source}"\n`;
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `PRISMA_Search_Results_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        triggerToast("Discovered results CSV downloaded!", "success");
+      };
+
+      const handleManualImportSubmit = (e) => {
+        e.preventDefault();
+        if (!manualTitle.trim()) {
+          triggerToast("Title is required", "warning");
+          return;
+        }
+        const newArt = {
+          id: `manual-${Date.now()}`,
+          title: manualTitle.trim(),
+          url: manualUrl.trim(),
+          authors: manualAuthors.trim() || "Manual Investigator Entry",
+          journal: manualJournal.trim() || "Local Publication Source",
+          abstract: manualAbstract.trim() || "No abstract provided in manual entry.",
+          status: "Identified",
+          source: "Manual Entry",
+          reviewerVotes: { ...DEFAULT_REVIEWER_VOTES },
+          rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" }
+        };
+
+        if (articles.some(a => a.title.toLowerCase().trim() === newArt.title.toLowerCase().trim())) {
+          triggerToast("An article with this title is already in your workspace.", "warning");
+          return;
+        }
+
+        setArticles(prev => [newArt, ...prev]);
+        setSelectedArtId(newArt.id);
+        triggerToast("Successfully ingested manually!", "success");
+
+        setManualTitle("");
+        setManualUrl("");
+        setManualAuthors("");
+        setManualJournal("");
+        setManualAbstract("");
+        setActiveTab("screening");
+      };
+
       const handleRawIngest = () => {
         if (!rawIngestText.trim()) return triggerToast("Ingest field is empty.", "warning");
         const lines = rawIngestText.split('\n');
         let importedCount = 0;
         
         if (rawIngestText.includes("TY  -") || rawIngestText.includes("ER  -")) {
-          let currentPaper = { id: "", title: "", url: "", authors: "", journal: "", abstract: "", status: "Identified", source: "Local Import", reviewerVotes: { reviewerA: null, reviewerB: null }, rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" } };
+          let currentPaper = { id: "", title: "", url: "", authors: "", journal: "", abstract: "", status: "Identified", source: "Local Import", reviewerVotes: { ...DEFAULT_REVIEWER_VOTES }, rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" } };
           lines.forEach(line => {
             const match = line.match(/^([A-Z0-9]{2})\s*-\s*(.*)$/);
             if (match) {
@@ -409,7 +612,7 @@
                 setArticles(prev => [currentPaper, ...prev]);
                 importedCount++;
               }
-              currentPaper = { id: "", title: "", url: "", authors: "", journal: "", abstract: "", status: "Identified", source: "Local Import", reviewerVotes: { reviewerA: null, reviewerB: null }, rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" } };
+              currentPaper = { id: "", title: "", url: "", authors: "", journal: "", abstract: "", status: "Identified", source: "Local Import", reviewerVotes: { ...DEFAULT_REVIEWER_VOTES }, rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" } };
             }
           });
         } else if (rawIngestText.includes("@article") || rawIngestText.includes("@inproceedings") || rawIngestText.includes("@book")) {
@@ -426,7 +629,7 @@
               journal: journalMatch ? journalMatch[1] : "Indexed Monograph",
               abstract: abstractMatch ? abstractMatch[1] : "No abstract parsed in bibTeX block.",
               status: "Identified", source: "Local Import",
-              reviewerVotes: { reviewerA: null, reviewerB: null },
+              reviewerVotes: { ...DEFAULT_REVIEWER_VOTES },
               rob: { bias1: "Low", bias2: "Low", bias3: "Low", bias4: "Low", bias5: "Low", summary: "Low" }
             }, ...prev]);
             importedCount++;
@@ -443,20 +646,53 @@
           if (art.id === artId) {
             const updatedVotes = { ...art.reviewerVotes, [reviewer]: vote };
             let nextStatus = art.status;
-            if (updatedVotes.reviewerA === "Approve" && updatedVotes.reviewerB === "Approve") nextStatus = "Sought_Retrieval";
-            else if (updatedVotes.reviewerA === "Exclude" && updatedVotes.reviewerB === "Exclude") nextStatus = "Excluded_Screening";
-            else if (updatedVotes.reviewerA && updatedVotes.reviewerB && updatedVotes.reviewerA !== updatedVotes.reviewerB) nextStatus = "Conflict";
-            else nextStatus = "Identified";
+
+            const activeReviewerKeys = Array.from({ length: reviewerCount }).map((_, i) => `reviewer${String.fromCharCode(65 + i)}`);
+            const activeVotes = activeReviewerKeys.map(k => updatedVotes[k]);
+            const allVoted = activeVotes.every(v => v !== null && v !== undefined);
+
+            if (reviewerCount === 1) {
+              nextStatus = updatedVotes.reviewerA === "Approve" ? "Sought_Retrieval" : "Excluded_Screening";
+            } else {
+              if (allVoted) {
+                const approves = activeVotes.filter(v => v === "Approve").length;
+                const excludes = activeVotes.filter(v => v === "Exclude").length;
+                
+                if (approves === reviewerCount) {
+                  nextStatus = "Sought_Retrieval";
+                } else if (excludes === reviewerCount) {
+                  nextStatus = "Excluded_Screening";
+                } else {
+                  // Standard strict PRISMA consensus: any deviation flags a conflict
+                  nextStatus = "Conflict"; 
+                }
+              } else {
+                nextStatus = "Identified";
+              }
+            }
             return { ...art, reviewerVotes: updatedVotes, status: nextStatus };
           }
           return art;
         }));
-        triggerToast(`${reviewer === 'reviewerA' ? 'R1' : 'R2'} voted: ${vote}`, "success");
+        
+        const revNum = reviewer.charCodeAt(8) - 64;
+        triggerToast(`Reviewer ${revNum} voted: ${vote}`, "success");
       };
 
       const resolveConflict = (artId, resolution) => {
         setArticles(prev => prev.map(art => {
-          if (art.id === artId) return { ...art, status: resolution === "Approve" ? "Sought_Retrieval" : "Excluded_Screening", reviewerVotes: { reviewerA: resolution, reviewerB: resolution } };
+          if (art.id === artId) {
+            const resolvedVotes = {};
+            Array.from({ length: 10 }).forEach((_, i) => {
+              const code = `reviewer${String.fromCharCode(65 + i)}`;
+              resolvedVotes[code] = resolution;
+            });
+            return { 
+              ...art, 
+              status: resolution === "Approve" ? "Sought_Retrieval" : "Excluded_Screening", 
+              reviewerVotes: resolvedVotes
+            };
+          }
           return art;
         }));
         triggerToast("Conflict resolved.", "success");
@@ -485,9 +721,8 @@
         } catch (e) { return text; }
       };
 
-      // Workspace Export / Import (Fallback for offline mode)
       const exportWorkspace = () => {
-        const data = { reviewTitle, articles, checklistProgress, searchHistory };
+        const data = { reviewTitle, articles, checklistProgress, searchHistory, reviewerCount };
         const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -509,10 +744,34 @@
             if (data.reviewTitle) setReviewTitle(data.reviewTitle);
             if (data.checklistProgress) setChecklistProgress(data.checklistProgress);
             if (data.searchHistory) setSearchHistory(data.searchHistory);
+            if (data.reviewerCount) setReviewerCount(data.reviewerCount);
             triggerToast("Workspace loaded successfully!", "success");
           } catch (err) { triggerToast("Invalid workspace file. Could not parse JSON.", "error"); }
         };
         reader.readAsText(file);
+      };
+
+      const downloadChecklistCSV = () => {
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Section,Title,Guideline Recommendation,Current Status,Your Draft Notes\n";
+        PRISMA_CHECKLIST_ITEMS.forEach(item => {
+          const state = checklistProgress[item.id] || { status: "Not Started", draft: "" };
+          const escapedDraft = (state.draft || "").replace(/"/g, '""');
+          const escapedRecommendation = item.recommendation.replace(/"/g, '""');
+          csvContent += `"${item.section}","${item.title}","${escapedRecommendation}","${state.status}","${escapedDraft}"\n`;
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `PRISMA_2020_Checklist_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        triggerToast("Checklist CSV downloaded!", "success");
+      };
+
+      const printChecklist = () => {
+        window.print();
       };
 
       const metrics = useMemo(() => {
@@ -558,7 +817,6 @@
 
             <div className="flex items-center space-x-3">
               
-              {/* Live Collaboration Sync Status Area */}
               <div className="hidden lg:flex items-center space-x-3 border-r border-slate-700 pr-3">
                 <div className="flex items-center space-x-1.5 text-[10px] font-bold text-slate-400">
                   {cloudStatus === "connecting" && <><i className="fa-solid fa-spinner animate-spin text-blue-400"></i><span>Connecting...</span></>}
@@ -573,27 +831,34 @@
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center space-x-1.5 transition ${cloudStatus === "connected" ? "bg-blue-600/20 hover:bg-blue-600/40 text-blue-400" : "bg-slate-800 text-slate-500 cursor-not-allowed"}`}
                 >
                   <i className="fa-solid fa-link"></i>
-                  <span>Invite Co-Reviewer</span>
+                  <span>Invite Team</span>
                 </button>
               </div>
 
+              {/* Scalable Reviewer Profile Selector up to 10 reviewers */}
               <div className="flex items-center space-x-1.5 bg-slate-800 border border-slate-700 rounded-lg p-1 text-[11px] font-bold">
                 <span className="text-[10px] text-slate-400 px-1">Reviewer Profile:</span>
-                <button 
-                  onClick={() => setCurrentReviewer("reviewerA")}
-                  className={`px-2 py-0.5 rounded transition ${currentReviewer === "reviewerA" ? "bg-blue-600 text-white" : "text-slate-300 hover:text-white"}`}
+                <select
+                  value={currentReviewer}
+                  onChange={(e) => {
+                    setCurrentReviewer(e.target.value);
+                    const reviewerNum = e.target.value.charCodeAt(8) - 64;
+                    triggerToast(`Switched profile view to Reviewer ${reviewerNum}`, "success");
+                  }}
+                  className="bg-transparent text-slate-200 border-none focus:outline-none text-xs font-bold cursor-pointer pr-2"
                 >
-                  R1 (Alpha)
-                </button>
-                <button 
-                  onClick={() => setCurrentReviewer("reviewerB")}
-                  className={`px-2 py-0.5 rounded transition ${currentReviewer === "reviewerB" ? "bg-blue-600 text-white" : "text-slate-300 hover:text-white"}`}
-                >
-                  R2 (Beta)
-                </button>
+                  {Array.from({ length: reviewerCount }).map((_, i) => {
+                    const code = `reviewer${String.fromCharCode(65 + i)}`;
+                    return (
+                      <option key={code} value={code} className="bg-slate-900 text-slate-200 font-bold">
+                        Reviewer {i + 1}
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
 
-              <button onClick={toggleDarkMode} className="p-1.5 rounded bg-slate-850 border border-slate-700 text-slate-300 hover:text-white">
+              <button onClick={toggleDarkMode} className="p-1.5 rounded bg-slate-855 border border-slate-700 text-slate-300 hover:text-white">
                 {darkMode ? <i className="fa-solid fa-sun"></i> : <i className="fa-solid fa-moon"></i>}
               </button>
             </div>
@@ -614,12 +879,12 @@
                   <i className="fa-solid fa-globe w-4 text-center"></i><span>Multi-Source API Search</span>
                 </button>
                 <button onClick={() => setActiveTab("custom-import")} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "custom-import" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}>
-                  <i className="fa-solid fa-file-import w-4 text-center"></i><span>RIS / BibTeX Import</span>
+                  <i className="fa-solid fa-file-import w-4 text-center"></i><span>Ingestion Workspace</span>
                 </button>
 
                 <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider px-3 pt-6 mb-2">Synthesis Workspace</div>
                 <button onClick={() => setActiveTab("screening")} className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "screening" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}>
-                  <div className="flex items-center space-x-3"><i className="fa-solid fa-square-poll-vertical w-4 text-center"></i><span>Dual Screening</span></div>
+                  <div className="flex items-center space-x-3"><i className="fa-solid fa-square-poll-vertical w-4 text-center"></i><span>Screening Dashboard</span></div>
                   {metrics.conflicts > 0 && <span className="bg-rose-600 text-white rounded px-1.5 py-0.2 animate-pulse text-[9px]">{metrics.conflicts} Conflict</span>}
                 </button>
                 <button onClick={() => setActiveTab("rob")} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === "rob" ? "bg-blue-600/10 text-blue-400 border-l-4 border-blue-500" : "text-slate-400 hover:bg-slate-800/40 hover:text-white"}`}>
@@ -648,7 +913,7 @@
                 <div className="px-6 text-[10px] text-slate-500 mt-2 pb-6 border-t border-slate-800 pt-4 space-y-1">
                   <p className="font-bold text-slate-400">PRISMA Core Engine</p>
                   <p>Developed by <span className="font-bold text-slate-300">Tery Setiawan</span></p>
-                  <p className="pt-2 opacity-70">Data APIs: OpenAlex & CrossRef</p>
+                  <p className="pt-2 opacity-70">Data APIs: OpenAlex & PubMed</p>
                   <p className="opacity-70">Built with React & Tailwind CSS</p>
                 </div>
               </div>
@@ -663,11 +928,49 @@
               <button onClick={() => setActiveTab("flowchart")} className={`flex flex-col items-center ${activeTab === "flowchart" ? "text-blue-400" : ""}`}><i className="fa-solid fa-diagram-project text-xs mb-1"></i><span>Flowchart</span></button>
             </div>
 
-            <main className="flex-1 overflow-y-auto pb-16 md:pb-6 p-4 md:p-8 bg-slate-100 dark:bg-slate-900 transition-colors duration-150">
+            <main className="flex-1 overflow-y-auto pb-16 md:pb-6 p-4 md:p-8 bg-slate-100 dark:bg-slate-900 transition-colors duration-150 print-full-width">
               
               {/* TUTORIAL TAB */}
               {activeTab === "tutorial" && (
                 <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
+                  
+                  {/* Option of number of reviewers from the very start */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="space-y-1 text-center md:text-left">
+                      <h3 className="text-sm font-bold dark:text-white">Workspace Team Initialization</h3>
+                      <p className="text-xs text-slate-500">Configure your project title and the total number of investigators before beginning.</p>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-center gap-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-bold text-slate-400">Reviewers count:</span>
+                        <select 
+                          value={reviewerCount} 
+                          onChange={(e) => {
+                            setReviewerCount(Number(e.target.value));
+                            triggerToast(`Configured team size to ${e.target.value} reviewers`, "success");
+                          }}
+                          className="text-xs p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500 font-bold cursor-pointer"
+                        >
+                          {Array.from({ length: 10 }).map((_, i) => (
+                            <option key={i + 1} value={i + 1}>
+                              {i + 1} {i === 0 ? "Reviewer" : "Reviewers"}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-bold text-slate-400">Project Name:</span>
+                        <input 
+                          type="text" 
+                          value={reviewTitle} 
+                          onChange={(e) => setReviewTitle(e.target.value)}
+                          placeholder="Name Your Systematic Review..."
+                          className="text-xs p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500 font-bold w-52"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 text-white rounded-2xl p-8 shadow-lg flex justify-between items-center relative overflow-hidden">
                     <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white opacity-10"></div>
                     <div className="absolute bottom-0 right-32 -mb-12 w-40 h-40 rounded-full bg-black opacity-10"></div>
@@ -698,17 +1001,17 @@
                     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                       <div className="flex items-center space-x-3 mb-4">
                         <div className="h-10 w-10 bg-gradient-to-br from-amber-400 to-orange-600 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-md">2</div>
-                        <h3 className="text-lg font-bold dark:text-white">Dual Blind Screening</h3>
+                        <h3 className="text-lg font-bold dark:text-white">Team-Based Screening</h3>
                       </div>
                       <div className="h-32 w-full bg-gradient-to-br from-amber-50 to-orange-100 dark:from-slate-700 dark:to-slate-800 rounded-xl mb-4 flex items-center justify-center border border-amber-100 dark:border-slate-600 relative overflow-hidden group space-x-6">
-                        <div className="flex flex-col items-center"><i className="fa-solid fa-user-shield text-4xl text-amber-500 drop-shadow-md group-hover:-translate-x-2 transition-transform duration-300"></i><span className="text-[9px] font-bold text-amber-600 mt-2">R1 (Alpha)</span></div>
+                        <div className="flex flex-col items-center"><i className="fa-solid fa-user-shield text-4xl text-amber-500 drop-shadow-md group-hover:-translate-x-1 transition-transform duration-300"></i><span className="text-[9px] font-bold text-amber-600 mt-2">R1 (Alpha)</span></div>
                         <i className="fa-solid fa-eye-slash text-2xl text-slate-400/50"></i>
-                        <div className="flex flex-col items-center"><i className="fa-solid fa-user-shield text-4xl text-orange-500 drop-shadow-md group-hover:translate-x-2 transition-transform duration-300"></i><span className="text-[9px] font-bold text-orange-600 mt-2">R2 (Beta)</span></div>
+                        <div className="flex flex-col items-center"><i className="fa-solid fa-user-shield text-4xl text-orange-500 drop-shadow-md group-hover:translate-x-1 transition-transform duration-300"></i><span className="text-[9px] font-bold text-orange-600 mt-2">R2 (Beta)</span></div>
                       </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 flex-1 leading-relaxed">Rigorous screening removes irrelevant articles. Use the blind dual-reviewer system to eliminate bias.</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 flex-1 leading-relaxed">Rigorous screening removes irrelevant articles. Set up a team of up to 10 reviewers to eliminate selection bias.</p>
                       <ul className="text-[11px] text-slate-500 dark:text-slate-400 space-y-2">
-                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Go to the <strong className="text-orange-500">Dual Screening</strong> tab.</span></li>
-                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>If votes disagree, resolve the red <strong className="text-rose-500">Conflict</strong> tag.</span></li>
+                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Go to the <strong className="text-orange-500">Screening Dashboard</strong>.</span></li>
+                        <li className="flex items-start"><i className="fa-solid fa-check text-emerald-500 mt-0.5 mr-2"></i><span>Review disagreements and resolve <strong className="text-rose-500">Conflicts</strong>.</span></li>
                       </ul>
                     </div>
 
@@ -752,39 +1055,94 @@
                     <div className="space-y-1 max-w-xl">
                       <span className="bg-blue-500/30 text-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Multi-Source Ingestion Pipeline</span>
                       <h2 className="text-xl font-extrabold">PRISMA Literature Discovery Engine</h2>
-                      <p className="text-xs text-blue-100">Query OpenAlex and CrossRef live with no paywalls, or read guidelines to import citations from Google Scholar.</p>
+                      <p className="text-xs text-blue-100">Query OpenAlex, PubMed, and CrossRef live, or review guidelines for importing citations from Google Scholar.</p>
                     </div>
                     <i className="fa-solid fa-circle-nodes text-5xl text-blue-500/20 hidden md:block"></i>
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm space-y-4">
-                    <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <div className="flex flex-col lg:flex-row gap-4 items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Database Selector</span>
                       <div className="flex flex-wrap gap-2">
-                        <button onClick={() => setSearchEngine("openalex")} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "openalex" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-880 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}><i className="fa-solid fa-database mr-1"></i> OpenAlex API</button>
-                        <button onClick={() => setSearchEngine("crossref")} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "crossref" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-880 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}><i className="fa-solid fa-hashtag mr-1"></i> CrossRef DOI Registry</button>
-                        <button onClick={() => setSearchEngine("scholar_guide")} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "scholar_guide" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-880 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}><i className="fa-solid fa-graduation-cap mr-1"></i> Google Scholar Import Guide</button>
+                        <button onClick={() => setSearchEngine("openalex")} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "openalex" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-855 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}><i className="fa-solid fa-database mr-1"></i> OpenAlex API</button>
+                        <button onClick={() => setSearchEngine("pubmed")} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "pubmed" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-855 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}><i className="fa-solid fa-laptop-medical mr-1"></i> PubMed API</button>
+                        <button onClick={() => setSearchEngine("crossref")} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "crossref" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-855 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}><i className="fa-solid fa-hashtag mr-1"></i> CrossRef DOI Registry</button>
+                        <button onClick={() => setSearchEngine("scholar_guide")} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${searchEngine === "scholar_guide" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 dark:bg-slate-855 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"}`}><i className="fa-solid fa-graduation-cap mr-1"></i> Google Scholar Guide</button>
                       </div>
                     </div>
 
-                    {searchEngine !== "scholar_guide" ? (
-                      <div className="flex flex-col md:flex-row gap-3">
-                        <div className="relative flex-1">
-                          <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
-                          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleMultiEngineSearch(); }} className="w-full text-xs pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:ring-1 focus:ring-blue-500 focus:outline-none" placeholder={`Type keywords or query parameters for ${searchEngine.toUpperCase()} (Pulls 50 max)...`} />
+                    {searchEngine !== "scholar_guide" && (
+                      <div className="space-y-4">
+                        <div className="flex flex-col md:flex-row gap-3">
+                          <div className="relative flex-1">
+                            <i className="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-xs"></i>
+                            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleMultiEngineSearch(); }} className="w-full text-xs pl-9 pr-4 py-3 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:ring-1 focus:ring-blue-500 focus:outline-none" placeholder={`Type search terms or query parameters for ${searchEngine.toUpperCase()}...`} />
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <label className="text-[11px] text-slate-400 font-bold whitespace-nowrap">Max results:</label>
+                            <select value={searchLimit} onChange={(e) => setSearchLimit(Number(e.target.value))} className="text-xs bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 p-2.5 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500 font-bold">
+                              <option value={10}>10</option>
+                              <option value={25}>25</option>
+                              <option value={50}>50</option>
+                              <option value={100}>100</option>
+                              <option value={200}>200</option>
+                            </select>
+                          </div>
+
+                          <button onClick={() => setFiltersOpen(!filtersOpen)} className="px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5">
+                            <i className="fa-solid fa-sliders"></i>
+                            <span>Filters</span>
+                          </button>
+
+                          <button onClick={handleMultiEngineSearch} disabled={searchLoading} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2">
+                            {searchLoading ? <><i className="fa-solid fa-circle-notch animate-spin"></i><span>Searching...</span></> : <><i className="fa-solid fa-network-wired"></i><span>Query Database</span></>}
+                          </button>
                         </div>
-                        <button onClick={handleMultiEngineSearch} disabled={searchLoading} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2">
-                          {searchLoading ? <><i className="fa-solid fa-circle-notch animate-spin"></i><span>Searching...</span></> : <><i className="fa-solid fa-network-wired"></i><span>Query Database</span></>}
-                        </button>
+
+                        {/* Collapsible Advanced Filters */}
+                        {filtersOpen && (
+                          <div className="p-4 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 rounded-xl grid grid-cols-1 md:grid-cols-5 gap-4 animate-fade-in">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Start Year</label>
+                              <input type="number" placeholder="e.g. 2018" value={filterStartYear} onChange={(e) => setFilterStartYear(e.target.value)} className="w-full text-xs p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none dark:text-white" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">End Year</label>
+                              <input type="number" placeholder="e.g. 2026" value={filterEndYear} onChange={(e) => setFilterEndYear(e.target.value)} className="w-full text-xs p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none dark:text-white" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Resource Type</label>
+                              <select value={filterResourceType} onChange={(e) => setFilterResourceType(e.target.value)} className="w-full text-xs p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none dark:text-white font-medium">
+                                <option value="all">All Literatures</option>
+                                <option value="journals">Journals Only</option>
+                                <option value="books">Books Only</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Open Access Status</label>
+                              <select value={filterOpenAccess} onChange={(e) => setFilterOpenAccess(e.target.value)} className="w-full text-xs p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none dark:text-white font-medium">
+                                <option value="all">No Restriction</option>
+                                <option value="oa">Open Access Only</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Country Code / Affil</label>
+                              <input type="text" placeholder="e.g. US, ID, Germany" value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)} className="w-full text-xs p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none dark:text-white" />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ) : (
+                    )}
+
+                    {searchEngine === "scholar_guide" && (
                       <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-4">
-                        <div className="flex items-center space-x-2 font-bold text-slate-800 dark:text-white"><i className="fa-solid fa-circle-info text-blue-500"></i><span>How to ingest papers from Google Scholar</span></div>
-                        <p className="text-slate-600 dark:text-slate-400 leading-relaxed">Follow this 3-step workflow to safely import Google Scholar citations:</p>
+                        <div className="flex items-center space-x-2 font-bold text-slate-800 dark:text-white"><i className="fa-solid fa-circle-info text-blue-500"></i><span>Google Scholar Integration Workflow</span></div>
+                        <p className="text-slate-600 dark:text-slate-400 leading-relaxed">Follow these steps to import Google Scholar citations:</p>
                         <ol className="list-decimal list-inside space-y-2 text-slate-700 dark:text-slate-300 font-medium">
                           <li>Perform your literature search query on Google Scholar.</li>
                           <li>Click the <span className="font-bold">"Cite"</span> button below your target papers and select <span className="font-bold">"RefMan" (RIS)</span> or <span className="font-bold">"BibTeX"</span>.</li>
-                          <li>Copy the downloaded raw file text and paste it into our <span className="font-bold cursor-pointer text-blue-500" onClick={() => setActiveTab("custom-import")}>RIS / BibTeX Import tab</span> to ingest them instantly.</li>
+                          <li>Copy the downloaded raw file text and paste it into our <span className="font-bold cursor-pointer text-blue-500" onClick={() => { setActiveTab("custom-import"); setImportTab("code"); }}>Ingestion Workspace</span> tab to import them.</li>
                         </ol>
                       </div>
                     )}
@@ -797,7 +1155,7 @@
                         <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto no-scrollbar">
                           {searchHistory.map(h => (
                             <div key={h.id} className="text-[10px] bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 flex items-center space-x-2 shadow-sm">
-                              <span className={`px-1.5 rounded text-[8px] font-bold ${h.reviewer === 'reviewerA' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400'}`}>{h.reviewer === 'reviewerA' ? 'R1' : 'R2'}</span>
+                              <span className={`px-1.5 rounded text-[8px] font-bold ${h.reviewer === 'reviewerA' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400'}`}>{h.reviewer === 'reviewerA' ? 'R1' : h.reviewer === 'reviewerB' ? 'R2' : 'R3'}</span>
                               <span className="font-semibold text-slate-700 dark:text-slate-200">"{h.query}"</span>
                               <span className="text-slate-400">({h.engine}, {h.count} hits)</span>
                             </div>
@@ -809,7 +1167,15 @@
 
                   {searchEngine !== "scholar_guide" && (
                     <div className="space-y-3">
-                      <div className="flex justify-between items-center px-1"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Indexed Search Results ({searchResults.length})</span></div>
+                      <div className="flex justify-between items-center px-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Indexed Search Results ({searchResults.length})</span>
+                        {searchResults.length > 0 && (
+                          <button onClick={downloadSearchResultsCSV} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1">
+                            <i className="fa-solid fa-file-csv"></i>
+                            <span>Download Search Results (CSV)</span>
+                          </button>
+                        )}
+                      </div>
                       {searchResults.length === 0 ? (
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center text-slate-400">
                           <i className="fa-solid fa-flask-vial text-3xl mb-3 text-slate-300"></i><h4 className="font-bold text-xs text-slate-700 dark:text-slate-300">No Query Executed</h4><p className="text-[11px] mt-1 max-w-xs mx-auto">Input a query above to fetch verified records.</p>
@@ -847,18 +1213,60 @@
               {activeTab === "custom-import" && (
                 <div className="space-y-6">
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-                    <div className="flex items-center space-x-2.5 pb-4 border-b border-slate-100 dark:border-slate-800">
-                      <div className="h-8 w-8 bg-blue-100 dark:bg-slate-800 text-blue-600 rounded-lg flex items-center justify-center"><i className="fa-solid fa-file-invoice"></i></div>
-                      <div>
-                        <h3 className="text-sm font-bold dark:text-white">Bibliography Raw Ingest</h3>
-                        <p className="text-xs text-slate-500">Paste standard .ris or BibTeX entries directly in the block below.</p>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 border-b border-slate-100 dark:border-slate-800 gap-4">
+                      <div className="flex items-center space-x-2.5">
+                        <div className="h-8 w-8 bg-blue-100 dark:bg-slate-800 text-blue-600 rounded-lg flex items-center justify-center"><i className="fa-solid fa-file-invoice"></i></div>
+                        <div>
+                          <h3 className="text-sm font-bold dark:text-white">Workspace Ingestion</h3>
+                          <p className="text-xs text-slate-500">Add systematic literature data directly to your pipeline.</p>
+                        </div>
+                      </div>
+                      <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                        <button onClick={() => setImportTab("manual")} className={`px-3 py-1.5 text-xs font-bold rounded-md transition ${importTab === "manual" ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+                          <i className="fa-solid fa-pen-to-square mr-1"></i> Manual Link Ingest
+                        </button>
+                        <button onClick={() => setImportTab("code")} className={`px-3 py-1.5 text-xs font-bold rounded-md transition ${importTab === "code" ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+                          <i className="fa-solid fa-code mr-1"></i> RIS / BibTeX Code Ingest
+                        </button>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Expected Format Example</label>
-                        <div className="p-4 bg-slate-800 text-emerald-400 text-[10px] sm:text-xs font-mono rounded-xl overflow-x-auto h-[320px] select-all whitespace-pre leading-relaxed border border-slate-700 shadow-inner">
+                    {importTab === "manual" ? (
+                      <form onSubmit={handleManualImportSubmit} className="space-y-4 max-w-2xl mx-auto py-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Article Title *</label>
+                            <input required type="text" placeholder="e.g. Artificial Intelligence in Health Informatics" value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none dark:text-white focus:ring-1 focus:ring-blue-500" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Direct Link / URL / DOI</label>
+                            <input type="url" placeholder="e.g. https://doi.org/10.1000/xyz123" value={manualUrl} onChange={(e) => setManualUrl(e.target.value)} className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none dark:text-white focus:ring-1 focus:ring-blue-500" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Authors (Comma-separated)</label>
+                            <input type="text" placeholder="e.g. Setiawan T, Doe J (2026)" value={manualAuthors} onChange={(e) => setManualAuthors(e.target.value)} className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none dark:text-white focus:ring-1 focus:ring-blue-500" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Journal / Publisher</label>
+                            <input type="text" placeholder="e.g. Systematic Synthesis Quarterly" value={manualJournal} onChange={(e) => setManualJournal(e.target.value)} className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none dark:text-white focus:ring-1 focus:ring-blue-500" />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Structured Abstract Context</label>
+                          <textarea rows="4" placeholder="Type or paste the publication abstract context here..." value={manualAbstract} onChange={(e) => setManualAbstract(e.target.value)} className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none dark:text-white focus:ring-1 focus:ring-blue-500" />
+                        </div>
+                        <div className="flex justify-end pt-2">
+                          <button type="submit" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-md">
+                            <i className="fa-solid fa-plus-circle"></i>
+                            <span>Ingest Single Article</span>
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Expected Format Example</label>
+                          <div className="p-4 bg-slate-800 text-emerald-400 text-[10px] sm:text-xs font-mono rounded-xl overflow-x-auto h-[320px] select-all whitespace-pre leading-relaxed border border-slate-700 shadow-inner">
 {`TY  - JOUR
 TI  - The role of AI in systematic reviews
 AU  - Setiawan, Tery
@@ -875,24 +1283,24 @@ ER  -
   year={2024},
   abstract={This study demonstrates the use...}
 }`}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Paste RIS or BibTeX Entries</label>
+                          <textarea 
+                            value={rawIngestText} 
+                            onChange={(e) => setRawIngestText(e.target.value)} 
+                            className="w-full h-[320px] text-[10px] sm:text-xs font-mono p-4 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:ring-1 focus:ring-blue-500 focus:outline-none leading-relaxed shadow-inner" 
+                            placeholder="Paste your RIS or BibTeX entries here..." 
+                          />
+                          <div className="pt-2 flex justify-end">
+                            <button onClick={handleRawIngest} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-md">
+                              <i className="fa-solid fa-microchip"></i><span>Ingest Citations</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Paste your Raw Code here</label>
-                        <textarea 
-                          value={rawIngestText} 
-                          onChange={(e) => setRawIngestText(e.target.value)} 
-                          className="w-full h-[320px] text-[10px] sm:text-xs font-mono p-4 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:ring-1 focus:ring-blue-500 focus:outline-none leading-relaxed shadow-inner" 
-                          placeholder="Paste your RIS or BibTeX entries here..." 
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="pt-2 flex justify-end">
-                      <button onClick={handleRawIngest} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5">
-                        <i className="fa-solid fa-microchip"></i><span>Ingest Citations</span>
-                      </button>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -902,14 +1310,33 @@ ER  -
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-[calc(100vh-180px)] overflow-hidden">
                   <div className="xl:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden shadow-sm">
                     <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-3 bg-slate-50 dark:bg-slate-800/40">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                         <h3 className="text-xs font-bold dark:text-white">Active Screening Stack</h3>
-                        <div className="flex items-center space-x-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          
+                          {/* Configurable Number of Reviewers up to 10 */}
+                          <div className="flex items-center space-x-1">
+                            <span className="text-[9px] font-bold text-slate-400">Team size:</span>
+                            <select 
+                              value={reviewerCount} 
+                              onChange={(e) => {
+                                setReviewerCount(Number(e.target.value));
+                                triggerToast(`Adjusted active reviewer count to ${e.target.value}`, "success");
+                              }}
+                              className="text-[10px] font-bold bg-white dark:bg-slate-855 p-1 rounded border dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer"
+                            >
+                              {Array.from({ length: 10 }).map((_, i) => (
+                                <option key={i + 1} value={i + 1}>
+                                  {i + 1} {i === 0 ? "Reviewer" : "Reviewers"}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          
                           <label className="flex items-center space-x-1.5 cursor-pointer text-[10px] text-slate-500 bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded">
                             <input type="checkbox" checked={blindMode} onChange={(e) => setBlindMode(e.target.checked)} className="rounded text-blue-600 focus:ring-0 cursor-pointer" />
                             <span className="font-bold dark:text-slate-300">Blind Mode</span>
                           </label>
-                          <span className="text-[10px] font-bold text-slate-500">Simulating: {currentReviewer === "reviewerA" ? "R1" : "R2"}</span>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -938,17 +1365,26 @@ ER  -
                               </div>
                               <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 mt-2 line-clamp-2">{art.title}</h4>
                               <p className="text-[10px] text-slate-500 mt-1">{art.authors}</p>
-                              <div className="mt-3 flex items-center space-x-2 text-[9px] border-t border-slate-50 dark:border-slate-800/60 pt-2">
-                                <span className="text-slate-400">Votes:</span>
+                              
+                              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] border-t border-slate-50 dark:border-slate-800/60 pt-2">
+                                <span className="text-slate-400 mr-1">Votes:</span>
                                 {(() => {
-                                  const myVote = art.reviewerVotes[currentReviewer];
-                                  const canSeeR1 = currentReviewer === 'reviewerA' || !blindMode || myVote !== null;
-                                  const canSeeR2 = currentReviewer === 'reviewerB' || !blindMode || myVote !== null;
-                                  const r1Display = canSeeR1 ? (art.reviewerVotes.reviewerA || "Pending") : (art.reviewerVotes.reviewerA ? "Masked" : "Pending");
-                                  const r2Display = canSeeR2 ? (art.reviewerVotes.reviewerB || "Pending") : (art.reviewerVotes.reviewerB ? "Masked" : "Pending");
-                                  return (
-                                    <><span className={`font-semibold ${r1Display !== "Pending" ? "text-slate-600 dark:text-slate-300" : "text-slate-400"} ${r1Display === "Masked" ? "italic" : ""}`}>R1: {r1Display}</span><span className="text-slate-300 dark:text-slate-700">|</span><span className={`font-semibold ${r2Display !== "Pending" ? "text-slate-600 dark:text-slate-300" : "text-slate-400"} ${r2Display === "Masked" ? "italic" : ""}`}>R2: {r2Display}</span></>
-                                  );
+                                  const activeReviewerKeys = Array.from({ length: reviewerCount }).map((_, i) => `reviewer${String.fromCharCode(65 + i)}`);
+                                  return activeReviewerKeys.map((key, index) => {
+                                    const label = `R${index + 1}`;
+                                    const vote = art.reviewerVotes[key];
+                                    const myVote = art.reviewerVotes[currentReviewer];
+                                    const canSee = currentReviewer === key || !blindMode || myVote !== null;
+                                    const display = canSee ? (vote || "Pending") : (vote ? "Masked" : "Pending");
+                                    return (
+                                      <span key={key} className="flex items-center">
+                                        {index > 0 && <span className="text-slate-300 dark:text-slate-700 mr-1.5">|</span>}
+                                        <span className={`font-semibold ${display !== "Pending" ? "text-slate-600 dark:text-slate-300" : "text-slate-400"} ${display === "Masked" ? "italic" : ""}`}>
+                                          {label}: {display}
+                                        </span>
+                                      </span>
+                                    );
+                                  });
                                 })()}
                               </div>
                             </div>
@@ -973,46 +1409,67 @@ ER  -
                               </h3>
                               <p className="text-[10px] text-slate-400 font-semibold">By: <span className="font-normal text-slate-500">{active.authors}</span></p>
                             </div>
-                            <div className="p-3 bg-blue-50/50 dark:bg-slate-80/40 rounded-xl border border-slate-200/50 dark:border-slate-700/50 space-y-1.5">
+                            <div className="p-3 bg-blue-50/50 dark:bg-slate-8/40 rounded-xl border border-slate-200/50 dark:border-slate-700/50 space-y-1.5">
                               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PICO Key Highlighter (Comma-Separated)</label>
                               <input type="text" value={picoKeywords} onChange={(e) => setPicoKeywords(e.target.value)} className="w-full text-xs p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none dark:text-white" placeholder="e.g. randomized, trial, diagnostic" />
                             </div>
+
+                            {/* Assessment log scaling seamlessly up to 10 reviewers */}
                             <div className="bg-slate-50 dark:bg-slate-855 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80 space-y-2">
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Review Assessment Log</span>
-                              <div className="grid grid-cols-2 gap-4 text-xs">
-                                <div className="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                                  <div><span className="text-[10px] text-slate-400 block font-semibold">Reviewer 1 (Alpha):</span><span className={`font-extrabold text-slate-700 dark:text-slate-300 ${(!active.reviewerVotes.reviewerA) ? "opacity-50" : ""}`}>{(() => { if (currentReviewer === 'reviewerA' || !blindMode) return active.reviewerVotes.reviewerA || "Waiting..."; if (active.reviewerVotes.reviewerB) return active.reviewerVotes.reviewerA || "Waiting..."; return active.reviewerVotes.reviewerA ? "Hidden (Blind)" : "Waiting..."; })()}</span></div>
-                                  {(() => { const v = (currentReviewer === 'reviewerA' || !blindMode || active.reviewerVotes.reviewerB) ? active.reviewerVotes.reviewerA : null; const isMasked = active.reviewerVotes.reviewerA && !v; if (isMasked) return <i className="fa-solid fa-eye-slash text-slate-400"></i>; if (v === "Approve") return <i className="fa-solid fa-circle-check text-emerald-500"></i>; if (v === "Exclude") return <i className="fa-solid fa-circle-xmark text-red-500"></i>; return <i className="fa-solid fa-clock text-slate-300 dark:text-slate-600"></i>; })()}
-                                </div>
-                                <div className="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                                  <div><span className="text-[10px] text-slate-400 block font-semibold">Reviewer 2 (Beta):</span><span className={`font-extrabold text-slate-700 dark:text-slate-300 ${(!active.reviewerVotes.reviewerB) ? "opacity-50" : ""}`}>{(() => { if (currentReviewer === 'reviewerB' || !blindMode) return active.reviewerVotes.reviewerB || "Waiting..."; if (active.reviewerVotes.reviewerA) return active.reviewerVotes.reviewerB || "Waiting..."; return active.reviewerVotes.reviewerB ? "Hidden (Blind)" : "Waiting..."; })()}</span></div>
-                                  {(() => { const v = (currentReviewer === 'reviewerB' || !blindMode || active.reviewerVotes.reviewerA) ? active.reviewerVotes.reviewerB : null; const isMasked = active.reviewerVotes.reviewerB && !v; if (isMasked) return <i className="fa-solid fa-eye-slash text-slate-400"></i>; if (v === "Approve") return <i className="fa-solid fa-circle-check text-emerald-500"></i>; if (v === "Exclude") return <i className="fa-solid fa-circle-xmark text-red-500"></i>; return <i className="fa-solid fa-clock text-slate-300 dark:text-slate-600"></i>; })()}
-                                </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                                {Array.from({ length: reviewerCount }).map((_, index) => {
+                                  const key = `reviewer${String.fromCharCode(65 + index)}`;
+                                  const label = `Reviewer ${index + 1}`;
+                                  const vote = active.reviewerVotes[key];
+                                  const myVote = active.reviewerVotes[currentReviewer];
+                                  const canSee = currentReviewer === key || !blindMode || myVote !== null;
+                                  const display = canSee ? (vote || "Waiting...") : (vote ? "Hidden (Blind)" : "Waiting...");
+                                  const icon = vote ? (vote === "Approve" ? "fa-solid fa-circle-check text-emerald-500" : "fa-solid fa-circle-xmark text-red-500") : "fa-solid fa-clock text-slate-300 dark:text-slate-600";
+                                  return (
+                                    <div key={key} className="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 flex justify-between items-center shadow-sm">
+                                      <div>
+                                        <span className="text-[10px] text-slate-400 block font-semibold">{label}:</span>
+                                        <span className={`font-extrabold text-slate-700 dark:text-slate-300 ${(!vote) ? "opacity-50" : ""}`}>{display}</span>
+                                      </div>
+                                      <i className={icon}></i>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
+
                             <div className="space-y-1">
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Structured Abstract Context</span>
                               <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-855 p-4 rounded-xl border border-slate-100 dark:border-slate-800/60 whitespace-pre-wrap">{highlightKeywords(active.abstract)}</p>
                             </div>
                           </div>
+                          
                           <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-3">
-                            <div className="text-center md:text-left"><span className="text-[9px] font-bold text-slate-400 uppercase block">Active Investigator:</span><span className="text-xs font-bold text-blue-600 dark:text-blue-400">{currentReviewer === "reviewerA" ? "Reviewer 1 (Alpha)" : "Reviewer 2 (Beta)"}</span></div>
+                            <div className="text-center md:text-left">
+                              <span className="text-[9px] font-bold text-slate-400 uppercase block">Active Investigator:</span>
+                              <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                                Reviewer {currentReviewer.charCodeAt(8) - 64}
+                              </span>
+                            </div>
+
                             {active.status === "Conflict" ? (
                               <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/60 p-3 rounded-xl flex items-center justify-between w-full md:w-auto gap-4">
-                                <div className="text-left"><span className="text-[10px] font-bold text-rose-500 uppercase block"><i className="fa-solid fa-triangle-exclamation"></i> Conflict Flagged</span><span className="text-[9px] text-slate-500">Votes disagree. Resolve as Principal Investigator:</span></div>
+                                <div className="text-left"><span className="text-[10px] font-bold text-rose-500 uppercase block"><i className="fa-solid fa-triangle-exclamation"></i> Conflict Flagged</span><span className="text-[9px] text-slate-500">Resolve as Principal Investigator:</span></div>
                                 <div className="flex space-x-2">
-                                  <button onClick={() => resolveConflict(active.id, "Approve")} className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] font-extrabold rounded-lg">Approve Entry</button>
-                                  <button onClick={() => resolveConflict(active.id, "Exclude")} className="px-3 py-1.5 bg-red-600 text-white text-[10px] font-extrabold rounded-lg">Exclude Entry</button>
+                                  <button onClick={() => resolveConflict(active.id, "Approve")} className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] font-extrabold rounded-lg">Approve</button>
+                                  <button onClick={() => resolveConflict(active.id, "Exclude")} className="px-3 py-1.5 bg-red-600 text-white text-[10px] font-extrabold rounded-lg">Exclude</button>
                                 </div>
                               </div>
                             ) : (
                               <div className="flex space-x-2">
-                                <button onClick={() => handleReviewerVote(active.id, currentReviewer, "Approve")} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center space-x-1"><i className="fa-solid fa-circle-check"></i><span>Approve Abstract</span></button>
-                                <button onClick={() => handleReviewerVote(active.id, currentReviewer, "Exclude")} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center space-x-1"><i className="fa-solid fa-circle-xmark"></i><span>Exclude Record</span></button>
+                                <button onClick={() => handleReviewerVote(active.id, currentReviewer, "Approve")} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center space-x-1"><i className="fa-solid fa-circle-check"></i><span>Approve</span></button>
+                                <button onClick={() => handleReviewerVote(active.id, currentReviewer, "Exclude")} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center space-x-1"><i className="fa-solid fa-circle-xmark"></i><span>Exclude</span></button>
                               </div>
                             )}
+
                             {active.status === "Sought_Retrieval" && <div className="flex items-center space-x-2"><span className="text-[10px] text-slate-500">Retrieval State:</span><button onClick={() => { setArticles(prev => prev.map(a => a.id === active.id ? { ...a, status: "Eligibility" } : a)); triggerToast("Retrieved.", "success"); }} className="px-2.5 py-1.5 bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 rounded-lg">Retrieved Full-Text</button></div>}
-                            {active.status === "Eligibility" && <div className="flex items-center space-x-2"><span className="text-[10px] text-slate-500">Eligibility trial:</span><button onClick={() => { setArticles(prev => prev.map(a => a.id === active.id ? { ...a, status: "Included" } : a)); triggerToast("Study Included", "success"); }} className="px-2.5 py-1.5 bg-emerald-600 text-white text-[10px] font-extrabold rounded-lg">Include Study</button><button onClick={() => { setArticles(prev => prev.map(a => a.id === active.id ? { ...a, status: "Excluded_Eligibility" } : a)); triggerToast("Study excluded.", "warning"); }} className="px-2.5 py-1.5 bg-red-600 text-white text-[10px] font-extrabold rounded-lg">Exclude</button></div>}
+                            {active.status === "Eligibility" && <div className="flex items-center space-x-2"><span className="text-[10px] text-slate-500">Eligibility decision:</span><button onClick={() => { setArticles(prev => prev.map(a => a.id === active.id ? { ...a, status: "Included" } : a)); triggerToast("Study Included", "success"); }} className="px-2.5 py-1.5 bg-emerald-600 text-white text-[10px] font-extrabold rounded-lg">Include</button><button onClick={() => { setArticles(prev => prev.map(a => a.id === active.id ? { ...a, status: "Excluded_Eligibility" } : a)); triggerToast("Study excluded.", "warning"); }} className="px-2.5 py-1.5 bg-red-600 text-white text-[10px] font-extrabold rounded-lg">Exclude</button></div>}
                           </div>
                         </div>
                       );
@@ -1084,7 +1541,7 @@ ER  -
 
               {/* FLOWCHART TAB */}
               {activeTab === "flowchart" && (
-                <div className="space-y-6">
+                <div className="space-y-6 font-medium">
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
                     <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
                       <div><h3 className="text-sm font-bold dark:text-white">PRISMA 2020 Flow Diagram</h3></div>
@@ -1117,8 +1574,21 @@ ER  -
               {/* CHECKLIST TAB */}
               {activeTab === "checklist" && (
                 <div className="space-y-6">
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
-                    <h3 className="text-sm font-bold dark:text-white">PRISMA 2020 Compliance Checklist</h3>
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <h3 className="text-sm font-bold dark:text-white">PRISMA 2020 Compliance Checklist</h3>
+                      <p className="text-xs text-slate-500 mt-1">Review guidelines and record your draft outcomes.</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button onClick={downloadChecklistCSV} className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1.5">
+                        <i className="fa-solid fa-file-csv"></i>
+                        <span>Download Checklist (CSV)</span>
+                      </button>
+                      <button onClick={printChecklist} className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold transition flex items-center space-x-1.5">
+                        <i className="fa-solid fa-print"></i>
+                        <span>Print Checklist</span>
+                      </button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-2">
